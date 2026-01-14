@@ -17,6 +17,7 @@ import { useProducts } from "../state/products";
 import { TENANTS } from "../mockData";
 
 const ALL = "__ALL__";
+const HARDCODED_SPACE_ID = "6967a16e85d8be6485d2dfbc";
 
 export const ProductList: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +25,13 @@ export const ProductList: React.FC = () => {
   const category = params.get("category");
   const [query, setQuery] = React.useState("");
   const [tenantFilter, setTenantFilter] = React.useState<string>(ALL);
-  const { products } = useProducts();
+  const { products, loadBySpace, loading, error } = useProducts();
+
+  React.useEffect(() => {
+    console.log("Calling loadBySpace", HARDCODED_SPACE_ID);
+    loadBySpace(HARDCODED_SPACE_ID);
+  }, [loadBySpace]);
+
 
   const filtered = products
     .filter((p) => (category ? p.category === category : true))
@@ -36,6 +43,9 @@ export const ProductList: React.FC = () => {
         : true
     )
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (loading) return <div>Loading products…</div>;
+  if (error) return <div>{error}</div>;
 
   return (
     <Box>

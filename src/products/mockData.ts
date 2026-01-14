@@ -46,6 +46,7 @@ export const MOCK_PRODUCTS: Product[] = [
   {
     id: "p1",
     tenantId: "tenant-shared",
+    spaceId: "space-1",
     name: "Olive Oil",
     synonym: "Extra Virgin",
     category: "Canned & Jars",
@@ -59,6 +60,7 @@ export const MOCK_PRODUCTS: Product[] = [
   {
     id: "p2",
     tenantId: "tenant-ed",
+    spaceId: "space-1",
     name: "Rice",
     category: "Grains & Pasta",
     measureType: "Kilograms",
@@ -71,6 +73,7 @@ export const MOCK_PRODUCTS: Product[] = [
   {
     id: "p3",
     tenantId: "tenant-partner",
+    spaceId: "space-1",
     name: "Oat Milk",
     category: "Dairy",
     measureType: "Litres",

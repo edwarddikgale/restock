@@ -29,6 +29,7 @@ export type Store =
 export interface Product {
   id: string;
   tenantId: TenantId; // supports couple/shared
+  spaceId: string; // supports multiple spaces per tenant
   name: string;
   synonym?: string;
   category: Category;
@@ -39,6 +40,7 @@ export interface Product {
   lastUpdatedOn: string; // ISO string
   createdOn: string; // ISO string
 }
+
 
 export interface Tenant {
   id: TenantId;

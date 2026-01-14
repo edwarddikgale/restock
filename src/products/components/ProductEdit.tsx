@@ -18,7 +18,7 @@ export const ProductEdit: React.FC = () => {
   if (!original || !value) return <Typography>Not found.</Typography>;
 
   const save = () => {
-    update({ ...value, lastUpdatedOn: now() });
+    update(id!, { ...value, lastUpdatedOn: now() });
     navigate(`/product/${original.id}`);
   };
 

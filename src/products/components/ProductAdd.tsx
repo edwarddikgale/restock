@@ -14,6 +14,7 @@ export const ProductAdd: React.FC = () => {
   const [value, setValue] = React.useState<Product>({
     id: (crypto as any).randomUUID ? crypto.randomUUID() : String(Date.now()),
     tenantId: "tenant-shared",
+    spaceId: "6967a16e85d8be6485d2dfbc",
     name: "",
     synonym: "",
     category: "Other",
@@ -26,7 +27,7 @@ export const ProductAdd: React.FC = () => {
   });
 
   const save = () => {
-    add({ ...value, lastUpdatedOn: now() });
+    add({ ...value, /*lastUpdatedOn: now()*/ });
     navigate("/?tab=list");
   };
 
