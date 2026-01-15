@@ -16,9 +16,11 @@ import {
   FormGroup,
   FormControlLabel,
   Checkbox,
+  Tooltip,
 } from "@mui/material";
 import { CATEGORIES, MEASURE_TYPES, STORE_OPTIONS, TENANTS } from "../mockData";
 import type { Product } from "../types";
+import humanDate from "../../common/utils/date/humanDate";
 
 export interface ProductFormProps {
   value: Product;
@@ -43,17 +45,23 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         e.preventDefault();
         onSubmit();
       }}
+      sx={{
+        // Make space so the bottom button is not hidden behind bottom nav
+        pb: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+    }}
     >
       <Stack spacing={1.5}>
         <FormControl fullWidth>
           <InputLabel id="tenant-label">Tenant</InputLabel>
           <Select
             labelId="tenant-label"
-            value={value.tenantId}
+            value={value.tenantId ?? ""}
             label="Tenant"
             onChange={(e) => update("tenantId", e.target.value)}
             input={<OutlinedInput label="Tenant" />}
             size="small"
+            displayEmpty
+            MenuProps={{ disablePortal: true, disableScrollLock: true }}
           >
             {TENANTS.map((t) => (
               <MenuItem key={t.id} value={t.id}>
@@ -88,6 +96,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             label="Category"
             onChange={(e) => update("category", e.target.value as any)}
             size="small"
+            displayEmpty
+            MenuProps={{ disablePortal: true, disableScrollLock: true }}
           >
             {CATEGORIES.map((c) => (
               <MenuItem key={c} value={c}>
@@ -105,6 +115,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             label="Measure Type"
             onChange={(e) => update("measureType", e.target.value as any)}
             size="small"
+            displayEmpty
+            MenuProps={{ disablePortal: true, disableScrollLock: true }}
           >
             {MEASURE_TYPES.map((m) => (
               <MenuItem key={m} value={m}>
@@ -158,11 +170,21 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         <Divider />
 
         <Stack direction="row" gap={1}>
-          <Chip label={`Created ${new Date(value.createdOn).toLocaleString()}`} variant="outlined" />
-          <Chip label={`Updated ${new Date(value.lastUpdatedOn).toLocaleString()}`} />
+          <Tooltip title={new Date(value.createdOn).toLocaleString()}>
+            <Chip label={`Created: ${humanDate(value.createdOn)}`} variant="outlined" />
+          </Tooltip>
+          <Tooltip title={new Date(value.lastUpdatedOn).toLocaleString()}>
+            <Chip label={`Updated: ${humanDate(value.lastUpdatedOn)}`} />
+          </Tooltip>
         </Stack>
 
-        <Button type="submit" variant="contained" size="large" sx={{ mt: 1 }}>
+        <Button type="submit" variant="contained" size="large" 
+            sx={{
+              mt: 1,
+              position: "sticky",
+              bottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)", // keep above bottom nav
+              zIndex: 1,
+            }}>
           {submitLabel}
         </Button>
       </Stack>

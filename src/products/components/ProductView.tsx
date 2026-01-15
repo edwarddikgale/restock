@@ -2,6 +2,7 @@ import * as React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "../state/products";
 import { Box, Stack, Typography, Chip, Button } from "@mui/material";
+import humanDate from "../../common/utils/date/humanDate";
 
 export const ProductView: React.FC = () => {
   const { id } = useParams();
@@ -35,11 +36,13 @@ export const ProductView: React.FC = () => {
       </Typography>
 
       <Typography variant="body2" color="text.secondary">
-        Created: {new Date(p.createdOn).toLocaleString()}
+        Created: {humanDate(p.createdOn)}
       </Typography>
+
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Last updated: {new Date(p.lastUpdatedOn).toLocaleString()}
+        Last updated: {humanDate(p.lastUpdatedOn)}
       </Typography>
+
 
       <Stack direction="row" spacing={1}>
         <Button variant="contained" onClick={() => navigate(`/product/${p.id}/edit`)}>

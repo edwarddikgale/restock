@@ -8,7 +8,21 @@ const theme = createTheme({
   },
   shape: { borderRadius: 12 },
   components: {
-    MuiContainer: { defaultProps: { maxWidth: "sm" } },
+    MuiContainer: { 
+      defaultProps: { 
+        maxWidth: "sm",
+      } 
+    },
+    MuiPopover: {
+      defaultProps: {
+        container: typeof document !== "undefined" ? document.body : undefined,
+      },
+    },
+    MuiModal: {
+      defaultProps: {
+        container: typeof document !== "undefined" ? document.body : undefined,
+      },
+    },
   },
 });
 
