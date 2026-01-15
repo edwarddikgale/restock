@@ -17,6 +17,8 @@ import { useProducts } from "../state/products";
 import { TENANTS } from "../mockData";
 import humanDate from "../../common/utils/date/humanDate";
 
+import "../styles/product-list.css";
+
 const ALL = "__ALL__";
 const HARDCODED_SPACE_ID = "6967a16e85d8be6485d2dfbc";
 
@@ -35,7 +37,6 @@ export const ProductList: React.FC = () => {
   const { products, loadBySpace, loading, error } = useProducts();
 
   React.useEffect(() => {
-    console.log("Calling loadBySpace", HARDCODED_SPACE_ID);
     loadBySpace(HARDCODED_SPACE_ID);
   }, [loadBySpace]);
 
@@ -55,7 +56,8 @@ export const ProductList: React.FC = () => {
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+      {/* Search */}
+      <Stack direction="row" spacing={1} sx={{ mb: 0.75 }}>
         <TextField
           size="small"
           fullWidth
@@ -65,12 +67,13 @@ export const ProductList: React.FC = () => {
         />
       </Stack>
 
+      {/* Tenant filter */}
       <ToggleButtonGroup
         size="small"
         exclusive
         value={tenantFilter}
         onChange={(_, v) => v && setTenantFilter(v)}
-        sx={{ mb: 1, flexWrap: "wrap" }}
+        sx={{ mb: 0.75, flexWrap: "wrap" }}
       >
         <ToggleButton value={ALL}>All</ToggleButton>
         {TENANTS.map((t) => (
@@ -80,7 +83,8 @@ export const ProductList: React.FC = () => {
         ))}
       </ToggleButtonGroup>
 
-      <Stack spacing={1} sx={{ pb: 7 }}>
+      {/* Product list */}
+      <Stack spacing={0.75} sx={{ pb: 7 }}>
         {filtered.map((p) => {
           const pct = Number.isFinite(p.percentageLeft) ? p.percentageLeft : 0;
           const trackColor = pctColor(pct);
@@ -88,63 +92,98 @@ export const ProductList: React.FC = () => {
           return (
             <Card key={p.id} variant="outlined">
               <CardActionArea onClick={() => navigate(`/product/${p.id}`)}>
-                <CardContent>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
+                <CardContent
+                  sx={{
+                    py: 0.75,
+                    px: 1.25,
+                  }}
+                >
+                  <Stack spacing={0.5}>
+                    {/* Title + meta */}
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="subtitle1" fontWeight={600} noWrap>
+                      <Typography
+                        variant="subtitle1"
+                        className="productName"
+                        noWrap
+                        title={p.name}
+                        sx={{
+                          lineHeight: 1.2,
+                          color: p.percentageLeft === 0 ? "error.main" : "text.primary",
+                          textDecoration: p.percentageLeft === 0 ? "line-through" : "none",
+                          opacity: p.percentageLeft === 0 ? 0.75 : 1,
+                        }}
+                      >
                         {p.name}
                       </Typography>
 
                       {p.synonym && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ lineHeight: 1.1 }}
+                        >
                           aka {p.synonym}
                         </Typography>
                       )}
 
-                      <Stack direction="row" gap={1} sx={{ mt: 0.5, flexWrap: "wrap" }}>
+                      <Stack
+                        direction="row"
+                        gap={0.5}
+                        sx={{
+                          mt: 0.25,
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                        }}
+                      >
                         <Chip size="small" label={p.category} variant="outlined" />
                         <Chip
                           label={`Updated ${humanDate(p.lastUpdatedOn)}`}
-                          sx={{
-                            height: 22, // smaller than default (~75%)
-                            fontSize: "0.7rem",
-                            fontWeight: 500,
-                            px: 0.75,
-                            color: "text.secondary",
-                            backgroundColor: (theme) =>
-                              theme.palette.mode === "light"
-                                ? "rgba(0, 0, 0, 0.04)"
-                                : "rgba(255, 255, 255, 0.08)",
-                            boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-                            border: "none",
-                            "& .MuiChip-label": {
-                              px: 0.75,
-                            },
-                          }}
+                          className="updatedChip"
                         />
-
                       </Stack>
                     </Box>
 
-                    <Box sx={{ minWidth: 160 }}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="baseline">
-                        <Typography variant="caption" color="text.secondary">
+                    {/* % left row */}
+                    <Box>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{ mb: -0.25 }}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ fontSize: "0.65rem" }}
+                        >
                           % left
                         </Typography>
-                        <Typography variant="caption" fontWeight={700}>
+                        <Typography
+                          variant="caption"
+                          fontWeight={700}
+                          sx={{ fontSize: "0.65rem" }}
+                        >
                           {Math.round(pct)}%
                         </Typography>
                       </Stack>
 
                       <Slider
-                        size="small"
                         value={pct}
                         disabled
                         aria-label="percentage left"
                         sx={{
-                          "& .MuiSlider-track": { bgcolor: trackColor },
-                          "& .MuiSlider-rail": { opacity: 0.25 },
-                          "& .MuiSlider-thumb": { display: "none" }, // optional: cleaner for read-only
+                          height: 6,
+                          py: 0,
+                          "& .MuiSlider-track": {
+                            bgcolor: trackColor,
+                            border: "none",
+                          },
+                          "& .MuiSlider-rail": {
+                            opacity: 0.22,
+                          },
+                          "& .MuiSlider-thumb": {
+                            display: "none",
+                          },
                         }}
                       />
                     </Box>
@@ -156,7 +195,11 @@ export const ProductList: React.FC = () => {
         })}
 
         {filtered.length === 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mt: 4 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ textAlign: "center", mt: 4 }}
+          >
             No products match your filters.
           </Typography>
         )}
