@@ -1,0 +1,33 @@
+/* ./styles/product-list.css */
+
+.productName {
+  font-weight: 750;
+  letter-spacing: 0.2px;
+  /* “cool” modern system font stack (no external font needed) */
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+.updatedChip {
+  height: 18px;              /* ⬅️ was 22 */
+  font-size: 0.62rem;        /* smaller text */
+  font-weight: 500;
+
+  background: rgba(0, 0, 0, 0.04) !important;
+  box-shadow: none !important;   /* ⬅️ remove shadow for density */
+  border-radius: 10px;
+}
+
+.updatedChip .MuiChip-label {
+  padding: 0 6px;            /* ⬅️ much tighter */
+}
+
+/* Also slim category chips */
+.MuiChip-root {
+  height: 18px;
+  font-size: 0.62rem;
+}
+
+.MuiChip-label {
+  padding: 0 6px;
+}

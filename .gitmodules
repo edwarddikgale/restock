@@ -1,0 +1,3 @@
+[submodule "api/restock-api"]
+	path = api/restock-api
+	url = https://github.com/edwarddikgale/restock-api.git
