@@ -2,7 +2,6 @@ import * as React from "react";
 import { Routes, Route, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
 import ListAltOutlinedIcon from "@mui/icons-material/ListAltOutlined";
-import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
@@ -52,12 +51,6 @@ export const ProductManager: React.FC = () => {
             value="list"
             icon={<ListAltOutlinedIcon />}
             onClick={() => navigate({ pathname: "/", search: "?tab=list" })}
-          />
-          <BottomNavigationAction
-            label="Categories"
-            value="categories"
-            icon={<CategoryOutlinedIcon />}
-            onClick={() => navigate({ pathname: "/", search: "?tab=categories" })}
           />
           <BottomNavigationAction
             label="Add"
