@@ -95,7 +95,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             label="Category"
             onChange={(e) => update("category", e.target.value as any)}
             size="small"
-            displayEmpty
+            MenuProps={{
+              disableAutoFocusItem: true,
+              slotProps: { paper: { sx: { maxHeight: 320 } } },
+            }}
           >
             {CATEGORIES.map((c) => (
               <MenuItem key={c} value={c}>
@@ -113,7 +116,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             label="Measure Type"
             onChange={(e) => update("measureType", e.target.value as any)}
             size="small"
-            displayEmpty
+            MenuProps={{
+              disableAutoFocusItem: true,
+              slotProps: { paper: { sx: { maxHeight: 320 } } },
+            }}
           >
             {MEASURE_TYPES.map((m) => (
               <MenuItem key={m} value={m}>
