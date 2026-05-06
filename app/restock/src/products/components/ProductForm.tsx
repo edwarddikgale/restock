@@ -4,10 +4,6 @@ import {
   Button,
   Chip,
   Divider,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   TextField,
   Typography,
@@ -87,47 +83,37 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           fullWidth
         />
 
-        <FormControl fullWidth>
-          <InputLabel id="category-label">Category</InputLabel>
-          <Select
-            labelId="category-label"
-            value={value.category}
-            label="Category"
-            onChange={(e) => update("category", e.target.value as any)}
-            size="small"
-            MenuProps={{
-              disableAutoFocusItem: true,
-              slotProps: { paper: { sx: { maxHeight: 320 } } },
-            }}
-          >
-            {CATEGORIES.map((c) => (
-              <MenuItem key={c} value={c}>
-                {c}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <TextField
+          select
+          label="Category"
+          size="small"
+          value={value.category}
+          onChange={(e) => update("category", e.target.value as any)}
+          SelectProps={{ native: true }}
+          fullWidth
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </TextField>
 
-        <FormControl fullWidth>
-          <InputLabel id="measure-label">Measure Type</InputLabel>
-          <Select
-            labelId="measure-label"
-            value={value.measureType}
-            label="Measure Type"
-            onChange={(e) => update("measureType", e.target.value as any)}
-            size="small"
-            MenuProps={{
-              disableAutoFocusItem: true,
-              slotProps: { paper: { sx: { maxHeight: 320 } } },
-            }}
-          >
-            {MEASURE_TYPES.map((m) => (
-              <MenuItem key={m} value={m}>
-                {m}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <TextField
+          select
+          label="Measure Type"
+          size="small"
+          value={value.measureType}
+          onChange={(e) => update("measureType", e.target.value as any)}
+          SelectProps={{ native: true }}
+          fullWidth
+        >
+          {MEASURE_TYPES.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </TextField>
 
         <Typography variant="body2">Preferred purchase stores</Typography>
         {renderedStores.length === 0 ? (
