@@ -20,11 +20,18 @@ import { fetchMyStores, type Store as StoreOption } from "../services/storesApi"
 import { useAuth } from "../../auth/AuthContext";
 import { formatInventoryHint } from "../utils/inventory";
 
+export interface SectionOption {
+  _id: string;
+  name: string;
+}
+
 export interface ProductFormProps {
   value: Product;
   onChange: (p: Product) => void;
   onSubmit: () => void;
   submitLabel?: string;
+  /** Sections (Spaces) the user can move this product into. Empty array hides the picker. */
+  sections?: SectionOption[];
 }
 
 export const ProductForm: React.FC<ProductFormProps> = ({
@@ -32,6 +39,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   onChange,
   onSubmit,
   submitLabel = "Save",
+  sections = [],
 }) => {
   const update = <K extends keyof Product>(key: K, v: Product[K]) =>
     onChange({ ...value, [key]: v });
@@ -74,6 +82,24 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           required
           fullWidth
         />
+
+        {sections.length > 1 && (
+          <TextField
+            select
+            label="Section"
+            size="small"
+            value={value.spaceId}
+            onChange={(e) => update("spaceId", e.target.value)}
+            SelectProps={{ native: true }}
+            fullWidth
+          >
+            {sections.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </TextField>
+        )}
 
         <TextField
           label="Synonym (optional)"

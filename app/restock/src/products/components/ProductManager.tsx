@@ -56,7 +56,15 @@ export const ProductManager: React.FC = () => {
             label="Add"
             value="add"
             icon={<AddCircleOutlineIcon />}
-            onClick={() => navigate("/add")}
+            onClick={() => {
+              // Preserve the active section context when adding from the List
+              const currentSectionId = params.get("sectionId");
+              navigate(
+                currentSectionId
+                  ? `/add?sectionId=${encodeURIComponent(currentSectionId)}`
+                  : "/add"
+              );
+            }}
           />
           <BottomNavigationAction
             label="Settings"

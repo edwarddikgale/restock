@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Typography, CircularProgress, Box, Alert } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Product } from "../types";
 import { useProducts } from "../state/products";
 import { useAuth } from "../../auth/AuthContext";
@@ -13,21 +13,20 @@ type LoadState = "loading" | "ready" | "no-space";
 
 export const ProductAdd: React.FC = () => {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const sectionIdFromUrl = params.get("sectionId");
+
   const { add } = useProducts();
   const { firebaseUser, tenant } = useAuth();
-  const [space, setSpace] = React.useState<Space | null>(null);
+  const [spaces, setSpaces] = React.useState<Space[]>([]);
   const [loadState, setLoadState] = React.useState<LoadState>("loading");
 
   React.useEffect(() => {
     if (!firebaseUser) return;
     fetchMySpaces(() => firebaseUser.getIdToken())
-      .then((spaces) => {
-        if (spaces.length > 0) {
-          setSpace(spaces[0]);
-          setLoadState("ready");
-        } else {
-          setLoadState("no-space");
-        }
+      .then((loaded) => {
+        setSpaces(loaded);
+        setLoadState(loaded.length > 0 ? "ready" : "no-space");
       })
       .catch(() => setLoadState("no-space"));
   }, [firebaseUser]);
@@ -48,16 +47,18 @@ export const ProductAdd: React.FC = () => {
     lastUpdatedOn: now(),
   });
 
-  // Once tenant + space are known, populate the form defaults
+  // Once tenant + sections are loaded, populate defaults: tenantId, and the
+  // initial section (URL hint takes priority, otherwise the first section).
   React.useEffect(() => {
-    if (tenant && space) {
-      setValue((v) => ({
-        ...v,
-        tenantId: String(tenant._id),
-        spaceId: space._id,
-      }));
-    }
-  }, [tenant, space]);
+    if (!tenant || spaces.length === 0) return;
+    const target =
+      (sectionIdFromUrl && spaces.find((s) => s._id === sectionIdFromUrl)) || spaces[0];
+    setValue((v) => ({
+      ...v,
+      tenantId: String(tenant._id),
+      spaceId: target._id,
+    }));
+  }, [tenant, spaces, sectionIdFromUrl]);
 
   if (loadState === "loading" || !tenant) {
     return (
@@ -67,10 +68,10 @@ export const ProductAdd: React.FC = () => {
     );
   }
 
-  if (loadState === "no-space" || !space) {
+  if (loadState === "no-space") {
     return (
       <Alert severity="warning" sx={{ mt: 2 }}>
-        No spaces found for your tenant. Sign out and back in to create a default space, or create one manually.
+        No sections found for your tenant. Create one in Settings first.
       </Alert>
     );
   }
@@ -85,7 +86,13 @@ export const ProductAdd: React.FC = () => {
       <Typography variant="h6" sx={{ mb: 1 }}>
         Add Product
       </Typography>
-      <ProductForm value={value} onChange={setValue} onSubmit={save} submitLabel="Add" />
+      <ProductForm
+        value={value}
+        onChange={setValue}
+        onSubmit={save}
+        submitLabel="Add"
+        sections={spaces}
+      />
     </>
   );
 };
