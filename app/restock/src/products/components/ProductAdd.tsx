@@ -43,6 +43,7 @@ export const ProductAdd: React.FC = () => {
     preferredStores: [],
     defaultQuantity: 1,
     percentageLeft: 100,
+    notes: "",
     createdOn: now(),
     lastUpdatedOn: now(),
   });

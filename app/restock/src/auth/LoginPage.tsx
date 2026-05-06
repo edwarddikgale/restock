@@ -70,7 +70,7 @@ export const LoginPage: React.FC = () => {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
           <Inventory2OutlinedIcon color="primary" sx={{ fontSize: 32 }} />
           <Typography variant="h5" fontWeight={700}>
-            Home Stock Tracker
+            Stokify
           </Typography>
         </Box>
 

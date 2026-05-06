@@ -26,6 +26,7 @@ export const MEASURE_TYPES: MeasureType[] = [
   "Kilograms",
   "Grams",
   "Units",
+  "Packages",
 ];
 
 const now = () => new Date().toISOString();

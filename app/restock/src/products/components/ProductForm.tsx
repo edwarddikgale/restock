@@ -23,6 +23,7 @@ import type { Product } from "../types";
 import humanDate from "../../common/utils/date/humanDate";
 import { fetchMyStores, type Store as StoreOption } from "../services/storesApi";
 import { useAuth } from "../../auth/AuthContext";
+import { formatInventoryHint } from "../utils/inventory";
 
 export interface ProductFormProps {
   value: Product;
@@ -172,12 +173,24 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         )}
 
         <TextField
-          label="Default quantity"
+          label={`How many in ${value.measureType} is full?`}
           type="number"
           size="small"
           inputProps={{ min: 0, step: 1 }}
           value={value.defaultQuantity}
           onChange={(e) => update("defaultQuantity", Number(e.target.value))}
+          fullWidth
+        />
+
+        <TextField
+          label="Notes"
+          size="small"
+          multiline
+          minRows={2}
+          maxRows={6}
+          value={value.notes ?? ""}
+          onChange={(e) => update("notes", e.target.value)}
+          placeholder="Brand preference, allergens, prep tips..."
           fullWidth
         />
 
@@ -191,6 +204,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           min={0}
           max={100}
         />
+        {value.defaultQuantity > 0 && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+            {formatInventoryHint(
+              value.name || "items",
+              value.measureType,
+              value.defaultQuantity,
+              value.percentageLeft
+            )}
+          </Typography>
+        )}
 
         <Divider />
 

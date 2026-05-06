@@ -108,6 +108,7 @@ export const ProductsProvider: React.FC<React.PropsWithChildren> = ({ children }
           preferredStores: p.preferredStores ?? [],
           defaultQuantity: p.defaultQuantity,
           percentageLeft: p.percentageLeft,
+          notes: p.notes,
         });
         dispatch({ type: "add", product: created });
         return created;
@@ -131,6 +132,7 @@ export const ProductsProvider: React.FC<React.PropsWithChildren> = ({ children }
           preferredStores: patch.preferredStores,
           defaultQuantity: patch.defaultQuantity,
           percentageLeft: patch.percentageLeft,
+          notes: patch.notes,
           lastUpdatedOn: new Date().toISOString(),
         });
         dispatch({ type: "update", product: updated });

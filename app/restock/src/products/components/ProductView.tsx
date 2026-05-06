@@ -1,8 +1,10 @@
 import * as React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "../state/products";
-import { Box, Stack, Typography, Chip, Button } from "@mui/material";
+import { Box, Stack, Typography, Chip, Button, Divider } from "@mui/material";
 import humanDate from "../../common/utils/date/humanDate";
+import { formatInventoryHint } from "../utils/inventory";
+import { ProductHistoryTable } from "./ProductHistoryTable";
 
 export const ProductView: React.FC = () => {
   const { id } = useParams();
@@ -32,7 +34,21 @@ export const ProductView: React.FC = () => {
       </Typography>
 
       <Typography variant="body2" sx={{ mb: 1 }}>
-        Default quantity: {p.defaultQuantity}
+        How many in {p.measureType} is full? {p.defaultQuantity} {p.measureType}
+      </Typography>
+
+      {p.notes && (
+        <Typography
+          variant="body2"
+          sx={{ mb: 1, whiteSpace: "pre-wrap", color: "text.secondary" }}
+        >
+          Notes: {p.notes}
+        </Typography>
+      )}
+
+      <Typography variant="body2" sx={{ mb: 1 }}>
+        Stock: {p.percentageLeft}% —{" "}
+        {formatInventoryHint(p.name, p.measureType, p.defaultQuantity, p.percentageLeft)}
       </Typography>
 
       <Typography variant="body2" color="text.secondary">
@@ -44,7 +60,7 @@ export const ProductView: React.FC = () => {
       </Typography>
 
 
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
         <Button variant="contained" onClick={() => navigate(`/product/${p.id}/edit`)}>
           Edit
         </Button>
@@ -59,6 +75,12 @@ export const ProductView: React.FC = () => {
           Delete
         </Button>
       </Stack>
+
+      <Divider sx={{ my: 1 }} />
+      <Typography variant="overline" color="text.secondary" sx={{ display: "block", mt: 1, mb: 1 }}>
+        Update history
+      </Typography>
+      <ProductHistoryTable productId={p.id} />
     </Box>
   );
 };

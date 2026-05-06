@@ -1,8 +1,30 @@
 const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8080").replace(/\/+$/, "");
 
+export type TenantType = "personal" | "company";
+export type CompanySize = "1-10" | "11-50" | "51-200" | "201-1000" | "1000+";
+
+export interface CompanyDetails {
+  companyName?: string;
+  industry?: string;
+  website?: string;
+  size?: CompanySize;
+  taxId?: string;
+}
+
+export interface Tenant {
+  _id: string;
+  name: string;
+  ownerId: string;
+  type: TenantType;
+  country?: string;
+  timezone?: string;
+  company?: CompanyDetails;
+  defaultStoresSeeded?: boolean;
+}
+
 export interface TenantMember {
   userId: string;
-  role: "owner" | "member";
+  role: "owner" | "admin" | "member";
   fullName: string;
   email: string;
   isYou: boolean;
@@ -19,19 +41,37 @@ export interface TenantWithMembers {
   members: TenantMember[];
 }
 
-export async function fetchTenantMembers(
-  getToken: () => Promise<string | null>
-): Promise<TenantWithMembers> {
+type GetToken = () => Promise<string | null>;
+
+async function call<T>(path: string, init: RequestInit, getToken: GetToken): Promise<T> {
   const token = await getToken();
-  const res = await fetch(`${BASE_URL}/api/auth/tenant/members`, {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...init,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init.headers || {}),
     },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body?.message || `HTTP ${res.status}`);
+    throw new Error(body?.message || body?.error || `HTTP ${res.status}`);
   }
   return res.json();
+}
+
+export async function fetchTenantMembers(getToken: GetToken): Promise<TenantWithMembers> {
+  return call<TenantWithMembers>("/api/auth/tenant/members", { method: "GET" }, getToken);
+}
+
+export async function updateTenant(
+  patch: Partial<Pick<Tenant, "name" | "type" | "country" | "timezone" | "company">>,
+  getToken: GetToken
+): Promise<Tenant> {
+  const data = await call<{ tenant: Tenant }>(
+    "/api/auth/tenant",
+    { method: "PATCH", body: JSON.stringify(patch) },
+    getToken
+  );
+  return data.tenant;
 }

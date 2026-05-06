@@ -5,6 +5,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { ProductManager } from "./products/components/ProductManager";
 import { useAuth } from "./auth/AuthContext";
 import { LoginPage } from "./auth/LoginPage";
+import { InvitationBanner } from "./auth/InvitationBanner";
 
 export default function App() {
   const { firebaseUser, loading, logout } = useAuth();
@@ -29,7 +30,7 @@ export default function App() {
             <Inventory2OutlinedIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Home Stock Tracker
+            Stokify
           </Typography>
           <IconButton color="inherit" onClick={logout} aria-label="sign out" size="small">
             <LogoutIcon fontSize="small" />
@@ -38,6 +39,7 @@ export default function App() {
       </AppBar>
 
       <Container sx={{ py: 2 }}>
+        <InvitationBanner />
         <ProductManager />
       </Container>
     </>

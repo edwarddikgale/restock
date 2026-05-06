@@ -1,6 +1,12 @@
 export type TenantId = string;
 
-export type MeasureType = "Litres" | "Millilitres" | "Kilograms" | "Grams" | "Units";
+export type MeasureType =
+  | "Litres"
+  | "Millilitres"
+  | "Kilograms"
+  | "Grams"
+  | "Units"
+  | "Packages";
 
 export type Category =
   | "Beverages"
@@ -29,6 +35,7 @@ export interface Product {
   preferredStores: Store[]; // checkable list
   defaultQuantity: number; // how much we usually stock
   percentageLeft: number; // 0..100 slider
+  notes?: string;
   lastUpdatedOn: string; // ISO string
   createdOn: string; // ISO string
 }
