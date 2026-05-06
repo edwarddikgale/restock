@@ -10,6 +10,8 @@ import {
   ListItemIcon,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
+import CheckIcon from "@mui/icons-material/Check";
+import HomeWorkOutlinedIcon from "@mui/icons-material/HomeWorkOutlined";
 import { useAuth } from "./AuthContext";
 
 function initialsFor(name?: string | null, email?: string | null): string {
@@ -21,7 +23,15 @@ function initialsFor(name?: string | null, email?: string | null): string {
 }
 
 export const UserMenu: React.FC = () => {
-  const { firebaseUser, userProfile, tenant, logout } = useAuth();
+  const {
+    firebaseUser,
+    userProfile,
+    tenant,
+    tenants,
+    activeTenantId,
+    switchTenant,
+    logout,
+  } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
 
   if (!firebaseUser) return null;
@@ -30,6 +40,14 @@ export const UserMenu: React.FC = () => {
   const displayName = userProfile?.fullName || firebaseUser.displayName || firebaseUser.email || "Account";
   const email = userProfile?.email || firebaseUser.email || "";
   const photoURL = firebaseUser.photoURL || undefined;
+
+  const close = () => setAnchorEl(null);
+
+  const handleSwitch = async (tenantId: string) => {
+    close();
+    if (tenantId === activeTenantId) return;
+    await switchTenant(tenantId);
+  };
 
   return (
     <>
@@ -58,10 +76,10 @@ export const UserMenu: React.FC = () => {
       <Menu
         anchorEl={anchorEl}
         open={open}
-        onClose={() => setAnchorEl(null)}
+        onClose={close}
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        slotProps={{ paper: { sx: { minWidth: 240, mt: 0.5 } } }}
+        slotProps={{ paper: { sx: { minWidth: 260, mt: 0.5 } } }}
       >
         {/* Identity block (not clickable) */}
         <Box sx={{ px: 2, py: 1 }}>
@@ -73,23 +91,53 @@ export const UserMenu: React.FC = () => {
               {email}
             </Typography>
           )}
-          {tenant && (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              noWrap
-              sx={{ display: "block", mt: 0.25 }}
-            >
-              {tenant.name}
-            </Typography>
-          )}
         </Box>
 
         <Divider />
 
+        {/* Tenants — always visible if we have at least one */}
+        {tenants.length > 0 && [
+          <Typography
+            key="tenants-label"
+            variant="overline"
+            color="text.secondary"
+            sx={{ display: "block", px: 2, pt: 1, pb: 0.25, lineHeight: 1.4 }}
+          >
+            Workspaces
+          </Typography>,
+          ...tenants.map((t) => {
+            const isActive = t._id === activeTenantId;
+            return (
+              <MenuItem key={t._id} onClick={() => handleSwitch(t._id)} selected={isActive}>
+                <ListItemIcon>
+                  {isActive ? <CheckIcon fontSize="small" /> : <HomeWorkOutlinedIcon fontSize="small" />}
+                </ListItemIcon>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" noWrap sx={{ fontWeight: isActive ? 600 : 400 }}>
+                    {t.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {t.role}
+                  </Typography>
+                </Box>
+              </MenuItem>
+            );
+          }),
+          <Divider key="tenants-divider" sx={{ mt: 0.5 }} />,
+        ]}
+
+        {/* Fallback hint when only the legacy single-tenant case was loaded */}
+        {tenants.length === 0 && tenant && (
+          <Box sx={{ px: 2, pb: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              {tenant.name}
+            </Typography>
+          </Box>
+        )}
+
         <MenuItem
           onClick={async () => {
-            setAnchorEl(null);
+            close();
             await logout();
           }}
         >

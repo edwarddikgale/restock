@@ -9,6 +9,11 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "../config/firebase";
+import {
+  fetchMyTenants,
+  setActiveTenant as setActiveTenantApi,
+  type TenantSummary,
+} from "./tenantApi";
 
 const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8080").replace(/\/+$/, "");
 
@@ -30,11 +35,14 @@ interface AuthContextValue {
   firebaseUser: User | null;
   userProfile: UserProfile | null;
   tenant: Tenant | null;
+  tenants: TenantSummary[];
+  activeTenantId: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  switchTenant: (tenantId: string) => Promise<void>;
   claimSharedData: () => Promise<{ migratedProducts: number; migratedSpaces: number }>;
 }
 
@@ -60,9 +68,11 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [tenants, setTenants] = useState<TenantSummary[]>([]);
+  const [activeTenantId, setActiveTenantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // On auth state change: run onboard to get/create profile + tenant
+  // On auth state change: run onboard, then fetch the user's full tenant list
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
@@ -75,17 +85,32 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
           );
           setUserProfile(data.userProfile);
           setTenant(data.tenant);
+
+          // Pull the full list so the UserMenu can render the switcher
+          const tlist = await fetchMyTenants(() => user.getIdToken());
+          setTenants(tlist.tenants);
+          setActiveTenantId(tlist.activeTenantId);
         } catch (e) {
           console.error("Onboard failed:", e);
         }
       } else {
         setUserProfile(null);
         setTenant(null);
+        setTenants([]);
+        setActiveTenantId(null);
       }
       setLoading(false);
     });
     return unsub;
   }, []);
+
+  const switchTenant = async (tenantId: string) => {
+    if (!firebaseUser) return;
+    if (tenantId === activeTenantId) return;
+    await setActiveTenantApi(tenantId, () => firebaseUser.getIdToken());
+    // Reload so every tenant-scoped panel rehydrates from the new active tenant.
+    window.location.reload();
+  };
 
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
@@ -115,7 +140,20 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   return (
     <AuthContext.Provider
-      value={{ firebaseUser, userProfile, tenant, loading, signIn, signUp, signInWithGoogle, logout, claimSharedData }}
+      value={{
+        firebaseUser,
+        userProfile,
+        tenant,
+        tenants,
+        activeTenantId,
+        loading,
+        signIn,
+        signUp,
+        signInWithGoogle,
+        logout,
+        switchTenant,
+        claimSharedData,
+      }}
     >
       {children}
     </AuthContext.Provider>

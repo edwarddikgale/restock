@@ -64,6 +64,26 @@ export async function fetchTenantMembers(getToken: GetToken): Promise<TenantWith
   return call<TenantWithMembers>("/api/auth/tenant/members", { method: "GET" }, getToken);
 }
 
+export interface TenantSummary {
+  _id: string;
+  name: string;
+  role: "owner" | "admin" | "member";
+}
+
+export async function fetchMyTenants(
+  getToken: GetToken
+): Promise<{ tenants: TenantSummary[]; activeTenantId: string | null }> {
+  return call("/api/auth/tenants", { method: "GET" }, getToken);
+}
+
+export async function setActiveTenant(tenantId: string, getToken: GetToken): Promise<void> {
+  await call(
+    "/api/auth/active-tenant",
+    { method: "POST", body: JSON.stringify({ tenantId }) },
+    getToken
+  );
+}
+
 export async function updateTenant(
   patch: Partial<Pick<Tenant, "name" | "type" | "country" | "timezone" | "company">>,
   getToken: GetToken

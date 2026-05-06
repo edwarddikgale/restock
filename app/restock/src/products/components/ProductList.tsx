@@ -134,27 +134,25 @@ export const ProductList: React.FC = () => {
         <ToggleButton value="full">Full {stockCounts.full ? `(${stockCounts.full})` : ""}</ToggleButton>
       </ToggleButtonGroup>
 
-      {/* Store filter — horizontally scrollable on phones */}
+      {/* Store filter — horizontally scrollable on phones, touch-friendly */}
       {storeOptions.length > 0 && (
         <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
-          <Stack direction="row" spacing={0.5} sx={{ flexWrap: "nowrap" }}>
+          <Stack direction="row" spacing={0.75} sx={{ flexWrap: "nowrap" }}>
             <Chip
-              size="small"
               label="Any store"
               color={storeFilter === STORE_ANY ? "primary" : "default"}
               variant={storeFilter === STORE_ANY ? "filled" : "outlined"}
               onClick={() => setStoreFilter(STORE_ANY)}
-              sx={{ flexShrink: 0 }}
+              sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
             />
             {storeOptions.map((s) => (
               <Chip
                 key={s._id}
-                size="small"
                 label={s.name}
                 color={storeFilter === s.name ? "primary" : "default"}
                 variant={storeFilter === s.name ? "filled" : "outlined"}
                 onClick={() => setStoreFilter(s.name)}
-                sx={{ flexShrink: 0 }}
+                sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
               />
             ))}
           </Stack>
