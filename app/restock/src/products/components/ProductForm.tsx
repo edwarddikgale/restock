@@ -96,7 +96,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             onChange={(e) => update("category", e.target.value as any)}
             size="small"
             displayEmpty
-            MenuProps={{ disablePortal: true, disableScrollLock: true }}
           >
             {CATEGORIES.map((c) => (
               <MenuItem key={c} value={c}>
@@ -115,7 +114,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             onChange={(e) => update("measureType", e.target.value as any)}
             size="small"
             displayEmpty
-            MenuProps={{ disablePortal: true, disableScrollLock: true }}
           >
             {MEASURE_TYPES.map((m) => (
               <MenuItem key={m} value={m}>
