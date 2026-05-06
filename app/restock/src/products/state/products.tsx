@@ -54,6 +54,7 @@ function reducer(state: ProductsState, action: Action): ProductsState {
 
 interface ProductsContextValue extends ProductsState {
   loadBySpace: (spaceId: string) => Promise<void>;
+  loadAll: () => Promise<void>;
   add: (p: Omit<Product, "id" | "createdOn" | "lastUpdatedOn">) => Promise<Product>;
   update: (id: string, patch: Partial<Product>) => Promise<Product>;
   remove: (id: string) => Promise<void>;
@@ -75,6 +76,27 @@ export const ProductsProvider: React.FC<React.PropsWithChildren> = ({ children }
   );
 
   const value = useMemo<ProductsContextValue>(() => {
+    const ALL_SENTINEL = "__ALL__";
+
+    const loadAll: ProductsContextValue["loadAll"] = async () => {
+      // Skip if already in "all" mode and we have data
+      if (state.activeSpaceId === ALL_SENTINEL) return;
+
+      dispatch({ type: "set_loading", loading: true });
+      dispatch({ type: "set_error", error: null });
+      dispatch({ type: "set_active_space", spaceId: ALL_SENTINEL });
+
+      try {
+        const { products } = await productsApi.listMy({ pageSize: 1000 });
+        dispatch({ type: "set_all", products });
+      } catch (err: any) {
+        dispatch({ type: "set_error", error: err?.message || "Failed to load products" });
+        dispatch({ type: "set_all", products: [] });
+      } finally {
+        dispatch({ type: "set_loading", loading: false });
+      }
+    };
+
     const loadBySpace: ProductsContextValue["loadBySpace"] = async (spaceId) => {
       if (!spaceId) return;
 
@@ -166,6 +188,7 @@ export const ProductsProvider: React.FC<React.PropsWithChildren> = ({ children }
       error: state.error,
       activeSpaceId: state.activeSpaceId,
       loadBySpace,
+      loadAll,
       add,
       update,
       remove,

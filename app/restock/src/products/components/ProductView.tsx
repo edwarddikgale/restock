@@ -1,7 +1,8 @@
 import * as React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "../state/products";
-import { Box, Stack, Typography, Chip, Button, Divider } from "@mui/material";
+import { Box, Stack, Typography, Chip, Button, Divider, IconButton } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import humanDate from "../../common/utils/date/humanDate";
 import { formatInventoryHint } from "../utils/inventory";
 import { ProductHistoryTable } from "./ProductHistoryTable";
@@ -34,6 +35,17 @@ export const ProductView: React.FC = () => {
 
   return (
     <Box>
+      {/* Back to list — uses browser history so the previous URL (with all
+          filter params) is restored instead of a hard-navigated /. */}
+      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
+        <IconButton size="small" onClick={() => navigate(-1)} aria-label="Back" sx={{ ml: -1 }}>
+          <ArrowBackIcon fontSize="small" />
+        </IconButton>
+        <Typography variant="caption" color="text.secondary">
+          Back to list
+        </Typography>
+      </Stack>
+
       {/* Header — name, optional synonym */}
       <Typography variant="h5" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
         {p.name}

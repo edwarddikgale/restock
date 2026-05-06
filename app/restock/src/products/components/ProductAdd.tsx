@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Typography, CircularProgress, Box, Alert } from "@mui/material";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, type NavigateFunction } from "react-router-dom";
 import type { Product } from "../types";
 import { useProducts } from "../state/products";
 import { useAuth } from "../../auth/AuthContext";
@@ -86,7 +86,7 @@ const ProductAddForm: React.FC<{
   setValue: React.Dispatch<React.SetStateAction<Product>>;
   sections: Space[];
   add: (p: Omit<Product, "id" | "createdOn" | "lastUpdatedOn">) => Promise<Product>;
-  navigate: (path: string) => void;
+  navigate: NavigateFunction;
 }> = ({ value, setValue, sections, add, navigate }) => {
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -97,7 +97,9 @@ const ProductAddForm: React.FC<{
     setBusy(true);
     try {
       await add({ ...value });
-      navigate("/?tab=list");
+      // Go back via history so the previous list URL (with all filter params)
+      // is restored exactly as the user left it.
+      navigate(-1);
     } catch (err: any) {
       setSubmitError(err?.message || "Failed to add product");
     } finally {

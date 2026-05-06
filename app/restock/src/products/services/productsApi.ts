@@ -121,6 +121,23 @@ export function createProductsApi(config: ProductsApiConfig) {
 
   return {
     /**
+     * List ALL products in the caller's active tenant (across every section).
+     */
+    async listMy(params: ListProductsParams = {}) {
+      const t = await tokenOrUndefined();
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && String(v).length > 0) qs.set(k, String(v));
+      });
+      const url = `${base}/api/products/my${qs.toString() ? `?${qs.toString()}` : ""}`;
+      const data = await http<ListProductsResponse>(url, { method: "GET", token: t });
+      return {
+        products: (data.products || []).map(mapDbProduct),
+        pagination: data.pagination,
+      };
+    },
+
+    /**
      * List products for a space (scoped)
      */
     async listBySpace(spaceId: string, params: ListProductsParams = {}) {

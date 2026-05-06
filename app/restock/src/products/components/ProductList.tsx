@@ -5,7 +5,6 @@ import {
   Card,
   Typography,
   Stack,
-  Slider,
   Chip,
   TextField,
   ToggleButton,
@@ -18,11 +17,15 @@ import { fetchMyStores, type Store as StoreOption } from "../services/storesApi"
 import humanDate from "../../common/utils/date/humanDate";
 import { formatInventoryHint } from "../utils/inventory";
 import { RecentActivity } from "./RecentActivity";
+import { StockEditDialog } from "./StockEditDialog";
+import type { Product } from "../types";
 
 import "../styles/product-list.css";
 
 type StockFilter = "all" | "low" | "mid" | "full";
 const STORE_ANY = "__ANY_STORE__";
+const SECTION_ALL = "__ALL_SECTIONS__";
+const SCROLL_KEY = "productList:scroll";
 
 function pctColor(pct: number) {
   if (pct >= 75) return "success.main";
@@ -38,24 +41,35 @@ function bucket(pct: number): Exclude<StockFilter, "all"> {
 
 export const ProductList: React.FC = () => {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+
+  // ---- All filters live in the URL so navigating away (e.g. into a product
+  // detail) and coming back via Browser Back restores them automatically.
+  const query = params.get("q") || "";
+  const stockFilter = (params.get("stock") as StockFilter) || "all";
+  const storeFilter = params.get("store") || STORE_ANY;
+  const sectionFilter = params.get("sectionId") || SECTION_ALL;
   const category = params.get("category");
-  const sectionIdFromUrl = params.get("sectionId");
 
-  const [query, setQuery] = React.useState("");
-  const [stockFilter, setStockFilter] = React.useState<StockFilter>("all");
-  const [storeFilter, setStoreFilter] = React.useState<string>(STORE_ANY);
+  const setFilterParam = React.useCallback(
+    (key: string, value: string | null, defaultValue: string) => {
+      const next = new URLSearchParams(params);
+      if (!value || value === defaultValue) next.delete(key);
+      else next.set(key, value);
+      // replace:true so each keystroke / chip-click doesn't pollute history
+      setParams(next, { replace: true });
+    },
+    [params, setParams]
+  );
 
-  const { products, loadBySpace, loading, error, update } = useProducts();
+  const { products, loadAll, loading, error, update } = useProducts();
   const { firebaseUser } = useAuth();
 
-  // Local override of percentageLeft while user drags so the slider stays
-  // smooth even before the API responds. Keyed by product id.
-  const [localPct, setLocalPct] = React.useState<Record<string, number>>({});
-
   const [spaces, setSpaces] = React.useState<Space[]>([]);
-  const [activeSpace, setActiveSpace] = React.useState<Space | null>(null);
   const [storeOptions, setStoreOptions] = React.useState<StoreOption[]>([]);
+
+  // Stock-edit dialog state
+  const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
 
   React.useEffect(() => {
     if (!firebaseUser) return;
@@ -64,31 +78,45 @@ export const ProductList: React.FC = () => {
       .catch(() => setStoreOptions([]));
   }, [firebaseUser]);
 
-  // Load the user's spaces once on mount; honour sectionId from the URL
-  // (deep-link from the Sections dashboard) when picking the initial active space.
   React.useEffect(() => {
     if (!firebaseUser) return;
-    fetchMySpaces(() => firebaseUser.getIdToken()).then((loaded) => {
-      setSpaces(loaded);
-      if (loaded.length === 0) return;
-      const target =
-        (sectionIdFromUrl && loaded.find((s) => s._id === sectionIdFromUrl)) || loaded[0];
-      setActiveSpace(target);
-    });
-  }, [firebaseUser, sectionIdFromUrl]);
+    fetchMySpaces(() => firebaseUser.getIdToken()).then(setSpaces);
+  }, [firebaseUser]);
 
   React.useEffect(() => {
-    if (activeSpace) loadBySpace(activeSpace._id);
-  }, [activeSpace, loadBySpace]);
+    if (firebaseUser) loadAll();
+  }, [firebaseUser, loadAll]);
 
-  // Counts for filter chip badges (computed before search/category to be useful)
+  // Save scroll on unmount, restore on mount once products are present.
+  const restoredRef = React.useRef(false);
+  React.useEffect(() => {
+    return () => {
+      sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+    };
+  }, []);
+  React.useEffect(() => {
+    if (restoredRef.current || products.length === 0) return;
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved !== null) {
+      const y = parseInt(saved, 10);
+      requestAnimationFrame(() => window.scrollTo(0, isFinite(y) ? y : 0));
+      sessionStorage.removeItem(SCROLL_KEY);
+    }
+    restoredRef.current = true;
+  }, [products.length]);
+
+  // Counts for stock filter chips (within the active section filter)
   const stockCounts = React.useMemo(() => {
     const c = { low: 0, mid: 0, full: 0 };
-    for (const p of products) c[bucket(p.percentageLeft)]++;
+    for (const p of products) {
+      if (sectionFilter !== SECTION_ALL && p.spaceId !== sectionFilter) continue;
+      c[bucket(p.percentageLeft)]++;
+    }
     return c;
-  }, [products]);
+  }, [products, sectionFilter]);
 
   const filtered = products
+    .filter((p) => (sectionFilter === SECTION_ALL ? true : p.spaceId === sectionFilter))
     .filter((p) => (category ? p.category === category : true))
     .filter((p) => (stockFilter === "all" ? true : bucket(p.percentageLeft) === stockFilter))
     .filter((p) =>
@@ -102,6 +130,10 @@ export const ProductList: React.FC = () => {
     )
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const handleStockSave = async (id: string, percentageLeft: number) => {
+    await update(id, { percentageLeft });
+  };
+
   if (loading) return <Typography variant="body2">Loading products…</Typography>;
   if (error) return <Typography variant="body2" color="error">{error}</Typography>;
 
@@ -109,22 +141,21 @@ export const ProductList: React.FC = () => {
     <Box>
       <RecentActivity />
 
-      {/* Search */}
       <TextField
         size="small"
         fullWidth
         placeholder="Search…"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => setFilterParam("q", e.target.value, "")}
         sx={{ mb: 1 }}
       />
 
-      {/* Stock-level filter — segmented, single source of truth */}
+      {/* Stock-level filter */}
       <ToggleButtonGroup
         size="small"
         exclusive
         value={stockFilter}
-        onChange={(_, v) => v && setStockFilter(v)}
+        onChange={(_, v) => v && setFilterParam("stock", v, "all")}
         fullWidth
         sx={{ mb: 1, "& .MuiToggleButton-root": { fontSize: "0.72rem", py: 0.4 } }}
       >
@@ -134,7 +165,7 @@ export const ProductList: React.FC = () => {
         <ToggleButton value="full">Full {stockCounts.full ? `(${stockCounts.full})` : ""}</ToggleButton>
       </ToggleButtonGroup>
 
-      {/* Store filter — horizontally scrollable on phones, touch-friendly */}
+      {/* Store filter */}
       {storeOptions.length > 0 && (
         <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
           <Stack direction="row" spacing={0.75} sx={{ flexWrap: "nowrap" }}>
@@ -142,7 +173,7 @@ export const ProductList: React.FC = () => {
               label="Any store"
               color={storeFilter === STORE_ANY ? "primary" : "default"}
               variant={storeFilter === STORE_ANY ? "filled" : "outlined"}
-              onClick={() => setStoreFilter(STORE_ANY)}
+              onClick={() => setFilterParam("store", null, STORE_ANY)}
               sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
             />
             {storeOptions.map((s) => (
@@ -151,7 +182,7 @@ export const ProductList: React.FC = () => {
                 label={s.name}
                 color={storeFilter === s.name ? "primary" : "default"}
                 variant={storeFilter === s.name ? "filled" : "outlined"}
-                onClick={() => setStoreFilter(s.name)}
+                onClick={() => setFilterParam("store", s.name, STORE_ANY)}
                 sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
               />
             ))}
@@ -159,17 +190,25 @@ export const ProductList: React.FC = () => {
         </Box>
       )}
 
-      {/* Section switcher — only when there's more than one */}
-      {spaces.length > 1 && (
+      {/* Section filter — defaults to "All sections" */}
+      {spaces.length > 0 && (
         <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
-          <Stack direction="row" spacing={0.5} sx={{ flexWrap: "nowrap" }}>
+          <Stack direction="row" spacing={0.75} sx={{ flexWrap: "nowrap" }}>
+            <Chip
+              label="All sections"
+              color={sectionFilter === SECTION_ALL ? "primary" : "default"}
+              variant={sectionFilter === SECTION_ALL ? "filled" : "outlined"}
+              onClick={() => setFilterParam("sectionId", null, SECTION_ALL)}
+              size="small"
+              sx={{ flexShrink: 0 }}
+            />
             {spaces.map((s) => (
               <Chip
                 key={s._id}
                 label={s.name}
-                onClick={() => setActiveSpace(s)}
-                color={activeSpace?._id === s._id ? "primary" : "default"}
-                variant={activeSpace?._id === s._id ? "filled" : "outlined"}
+                onClick={() => setFilterParam("sectionId", s._id, SECTION_ALL)}
+                color={sectionFilter === s._id ? "primary" : "default"}
+                variant={sectionFilter === s._id ? "filled" : "outlined"}
                 size="small"
                 sx={{ flexShrink: 0 }}
               />
@@ -178,14 +217,12 @@ export const ProductList: React.FC = () => {
         </Box>
       )}
 
-      {/* Cards — compact, name+% on top row, slider, hint+date row */}
+      {/* Cards */}
       <Stack spacing={0.5} sx={{ pb: 9 }}>
         {filtered.map((p) => {
-          const pctRaw = localPct[p.id] ?? p.percentageLeft;
-          const pct = Number.isFinite(pctRaw) ? pctRaw : 0;
+          const pct = Number.isFinite(p.percentageLeft) ? p.percentageLeft : 0;
           const trackColor = pctColor(pct);
           const isOut = p.percentageLeft === 0;
-
           const goToProduct = () => navigate(`/product/${p.id}`);
 
           return (
@@ -226,43 +263,35 @@ export const ProductList: React.FC = () => {
                 </Stack>
               </Box>
 
-              {/* Row 2: slider — its own dedicated touch zone, NOT clickable for nav */}
-              <Box sx={{ px: 1.25, py: 0.5 }}>
-                <Slider
-                  value={pct}
-                  aria-label="percentage left"
-                  step={5}
-                  min={0}
-                  max={100}
-                  valueLabelDisplay="auto"
-                  onChange={(_, v) =>
-                    setLocalPct((prev) => ({ ...prev, [p.id]: v as number }))
-                  }
-                  onChangeCommitted={async (_, v) => {
-                    const next = v as number;
-                    try {
-                      await update(p.id, { percentageLeft: next });
-                    } finally {
-                      setLocalPct((prev) => {
-                        const { [p.id]: _omit, ...rest } = prev;
-                        return rest;
-                      });
-                    }
-                  }}
+              {/* Row 2: visual stock bar — TAP to open edit dialog (no drag, no scroll conflict) */}
+              <Box
+                onClick={() => setEditingProduct(p)}
+                role="button"
+                aria-label={`Edit stock for ${p.name}`}
+                sx={{
+                  px: 1.25,
+                  py: 1,
+                  cursor: "pointer",
+                  "&:active": { bgcolor: "action.hover" },
+                }}
+              >
+                <Box
                   sx={{
                     height: 10,
-                    py: 1.25, // bigger invisible touch target than the visual track
-                    "& .MuiSlider-track": { bgcolor: trackColor, border: "none" },
-                    "& .MuiSlider-rail": { opacity: 0.22 },
-                    "& .MuiSlider-thumb": {
-                      width: 18,
-                      height: 18,
-                      "&:hover, &.Mui-focusVisible": {
-                        boxShadow: "0 0 0 8px rgba(0,0,0,0.06)",
-                      },
-                    },
+                    bgcolor: "rgba(0,0,0,0.08)",
+                    borderRadius: 5,
+                    overflow: "hidden",
                   }}
-                />
+                >
+                  <Box
+                    sx={{
+                      width: `${pct}%`,
+                      height: "100%",
+                      bgcolor: trackColor,
+                      transition: "width 0.25s ease, background-color 0.25s ease",
+                    }}
+                  />
+                </Box>
               </Box>
 
               {/* Row 3: hint + relative time — also clickable for navigation */}
@@ -270,7 +299,7 @@ export const ProductList: React.FC = () => {
                 onClick={goToProduct}
                 sx={{
                   px: 1.25,
-                  pt: 0.5,
+                  pt: 0.25,
                   pb: 0.75,
                   cursor: "pointer",
                   "&:active": { bgcolor: "action.hover" },
@@ -305,6 +334,13 @@ export const ProductList: React.FC = () => {
           </Typography>
         )}
       </Stack>
+
+      <StockEditDialog
+        open={editingProduct !== null}
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSave={handleStockSave}
+      />
     </Box>
   );
 };
