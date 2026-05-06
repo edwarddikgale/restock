@@ -11,7 +11,6 @@ import {
   IconButton,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useAuth } from "./AuthContext";
@@ -67,9 +66,22 @@ export const LoginPage: React.FC = () => {
       }}
     >
       <Box sx={{ width: "100%", maxWidth: 380 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-          <Inventory2OutlinedIcon color="primary" sx={{ fontSize: 32 }} />
-          <Typography variant="h5" fontWeight={700}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 3 }}>
+          <Box
+            component="img"
+            src="/stokify-logo.svg"
+            alt="Stokify"
+            sx={{ width: 36, height: 36 }}
+          />
+          <Typography
+            component="div"
+            sx={{
+              fontFamily: "'Comfortaa', system-ui, sans-serif",
+              fontWeight: 700,
+              fontSize: "1.85rem",
+              letterSpacing: "0.02em",
+            }}
+          >
             Stokify
           </Typography>
         </Box>

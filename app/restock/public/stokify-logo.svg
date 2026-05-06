@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Stokify">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a73e8"/>
+      <stop offset="100%" stop-color="#0d47a1"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" rx="7" ry="7" fill="url(#bg)"/>
+  <!-- Three stock-level bars: full, mid, low -->
+  <rect x="6.5" y="8" width="19" height="3" rx="1.5" fill="#ffffff"/>
+  <rect x="6.5" y="14.5" width="12.5" height="3" rx="1.5" fill="#ffffff" opacity="0.85"/>
+  <rect x="6.5" y="21" width="6" height="3" rx="1.5" fill="#ffffff" opacity="0.65"/>
+</svg>

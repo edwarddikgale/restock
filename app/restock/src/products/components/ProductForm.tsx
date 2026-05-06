@@ -7,7 +7,6 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  OutlinedInput,
   Select,
   Stack,
   TextField,
@@ -18,7 +17,7 @@ import {
   Checkbox,
   Tooltip,
 } from "@mui/material";
-import { CATEGORIES, MEASURE_TYPES, TENANTS } from "../mockData";
+import { CATEGORIES, MEASURE_TYPES } from "../mockData";
 import type { Product } from "../types";
 import humanDate from "../../common/utils/date/humanDate";
 import { fetchMyStores, type Store as StoreOption } from "../services/storesApi";
@@ -71,26 +70,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }}
     >
       <Stack spacing={1.5}>
-        <FormControl fullWidth>
-          <InputLabel id="tenant-label">Tenant</InputLabel>
-          <Select
-            labelId="tenant-label"
-            value={value.tenantId ?? ""}
-            label="Tenant"
-            onChange={(e) => update("tenantId", e.target.value)}
-            input={<OutlinedInput label="Tenant" />}
-            size="small"
-            displayEmpty
-            MenuProps={{ disablePortal: true, disableScrollLock: true }}
-          >
-            {TENANTS.map((t) => (
-              <MenuItem key={t.id} value={t.id}>
-                {t.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
         <TextField
           label="Name"
           size="small"

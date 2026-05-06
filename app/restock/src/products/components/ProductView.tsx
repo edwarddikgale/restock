@@ -6,6 +6,22 @@ import humanDate from "../../common/utils/date/humanDate";
 import { formatInventoryHint } from "../utils/inventory";
 import { ProductHistoryTable } from "./ProductHistoryTable";
 
+function stockColor(pct: number) {
+  if (pct >= 75) return "success.main";
+  if (pct <= 25) return "error.main";
+  return "warning.main";
+}
+
+const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Typography
+    variant="overline"
+    color="text.secondary"
+    sx={{ display: "block", lineHeight: 1.4, letterSpacing: 0.5 }}
+  >
+    {children}
+  </Typography>
+);
+
 export const ProductView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -14,52 +30,83 @@ export const ProductView: React.FC = () => {
 
   if (!p) return <Typography>Not found.</Typography>;
 
+  const pct = Number.isFinite(p.percentageLeft) ? p.percentageLeft : 0;
+
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 1 }}>
+      {/* Header — name, optional synonym */}
+      <Typography variant="h5" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
         {p.name}
       </Typography>
-
-      <Stack direction="row" gap={1} sx={{ mb: 1 }}>
-        <Chip label={p.category} />
-        <Chip label={p.measureType} variant="outlined" />
-      </Stack>
-
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        Synonym: {p.synonym || "—"}
-      </Typography>
-
-      <Typography variant="body2" sx={{ mb: 1 }}>
-        Preferred stores: {p.preferredStores.join(", ") || "—"}
-      </Typography>
-
-      <Typography variant="body2" sx={{ mb: 1 }}>
-        How many in {p.measureType} is full? {p.defaultQuantity} {p.measureType}
-      </Typography>
-
-      {p.notes && (
-        <Typography
-          variant="body2"
-          sx={{ mb: 1, whiteSpace: "pre-wrap", color: "text.secondary" }}
-        >
-          Notes: {p.notes}
+      {p.synonym && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          aka {p.synonym}
         </Typography>
       )}
 
-      <Typography variant="body2" sx={{ mb: 1 }}>
-        Stock: {p.percentageLeft}% —{" "}
-        {formatInventoryHint(p.name, p.measureType, p.defaultQuantity, p.percentageLeft)}
+      <Stack direction="row" gap={0.75} sx={{ mt: 1, mb: 2.5, flexWrap: "wrap" }}>
+        <Chip size="small" label={p.category} />
+        <Chip size="small" label={p.measureType} variant="outlined" />
+      </Stack>
+
+      {/* Current stock — visual focal point */}
+      <Box sx={{ mb: 2.5 }}>
+        <Label>Current Stock</Label>
+        <Stack direction="row" alignItems="baseline" spacing={1}>
+          <Typography variant="h4" sx={{ fontWeight: 600, color: stockColor(pct) }}>
+            {Math.round(pct)}%
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {formatInventoryHint(p.name, p.measureType, p.defaultQuantity, pct)}
+          </Typography>
+        </Stack>
+      </Box>
+
+      {/* Compact details */}
+      <Stack spacing={1.25} sx={{ mb: 2.5 }}>
+        <Box>
+          <Label>Full at</Label>
+          <Typography variant="body2">
+            {p.defaultQuantity} {p.measureType}
+          </Typography>
+        </Box>
+
+        {p.preferredStores.length > 0 && (
+          <Box>
+            <Label>Preferred stores</Label>
+            <Stack direction="row" gap={0.5} sx={{ mt: 0.25, flexWrap: "wrap" }}>
+              {p.preferredStores.map((s) => (
+                <Chip key={s} size="small" label={s} variant="outlined" />
+              ))}
+            </Stack>
+          </Box>
+        )}
+
+        {p.notes && (
+          <Box>
+            <Label>Notes</Label>
+            <Typography
+              variant="body2"
+              sx={{
+                whiteSpace: "pre-wrap",
+                pl: 1.25,
+                borderLeft: "2px solid",
+                borderColor: "divider",
+                color: "text.primary",
+              }}
+            >
+              {p.notes}
+            </Typography>
+          </Box>
+        )}
+      </Stack>
+
+      {/* Subtle meta */}
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+        Created {humanDate(p.createdOn)} · Updated {humanDate(p.lastUpdatedOn)}
       </Typography>
 
-      <Typography variant="body2" color="text.secondary">
-        Created: {humanDate(p.createdOn)}
-      </Typography>
-
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Last updated: {humanDate(p.lastUpdatedOn)}
-      </Typography>
-
-
+      {/* Actions */}
       <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
         <Button variant="contained" onClick={() => navigate(`/product/${p.id}/edit`)}>
           Edit
