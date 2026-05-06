@@ -76,9 +76,33 @@ export const ProductAdd: React.FC = () => {
     );
   }
 
-  const save = () => {
-    add({ ...value });
-    navigate("/?tab=list");
+  return <ProductAddForm value={value} setValue={setValue} sections={spaces} add={add} navigate={navigate} />;
+};
+
+// Separate inner component so we can hold submit-state without polluting the
+// loading/guard logic above.
+const ProductAddForm: React.FC<{
+  value: Product;
+  setValue: React.Dispatch<React.SetStateAction<Product>>;
+  sections: Space[];
+  add: (p: Omit<Product, "id" | "createdOn" | "lastUpdatedOn">) => Promise<Product>;
+  navigate: (path: string) => void;
+}> = ({ value, setValue, sections, add, navigate }) => {
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  const save = async () => {
+    if (busy) return;
+    setSubmitError(null);
+    setBusy(true);
+    try {
+      await add({ ...value });
+      navigate("/?tab=list");
+    } catch (err: any) {
+      setSubmitError(err?.message || "Failed to add product");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -86,12 +110,17 @@ export const ProductAdd: React.FC = () => {
       <Typography variant="h6" sx={{ mb: 1 }}>
         Add Product
       </Typography>
+      {submitError && (
+        <Alert severity="error" sx={{ mb: 1.5 }}>
+          {submitError}
+        </Alert>
+      )}
       <ProductForm
         value={value}
         onChange={setValue}
         onSubmit={save}
-        submitLabel="Add"
-        sections={spaces}
+        submitLabel={busy ? "Adding…" : "Add"}
+        sections={sections}
       />
     </>
   );

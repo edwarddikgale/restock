@@ -78,7 +78,11 @@ export const ProductsProvider: React.FC<React.PropsWithChildren> = ({ children }
     const loadBySpace: ProductsContextValue["loadBySpace"] = async (spaceId) => {
       if (!spaceId) return;
 
-      if (state.activeSpaceId === spaceId && state.products.length > 0) return;
+      // Once we've activated this space we're done — even if it has zero products.
+      // (Previously this also required products.length > 0, which made empty
+      // sections loop forever because every dispatch changes loadBySpace's
+      // reference and re-runs the consumer's effect.)
+      if (state.activeSpaceId === spaceId) return;
 
       dispatch({ type: "set_loading", loading: true });
       dispatch({ type: "set_error", error: null });
