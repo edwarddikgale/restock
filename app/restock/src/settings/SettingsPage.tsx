@@ -425,19 +425,15 @@ export const SettingsPage: React.FC = () => {
           fullWidth
         />
 
-        <FormControl fullWidth size="small" disabled={!isOwner}>
-          <InputLabel id="tenant-country">Country</InputLabel>
-          <TextField
-            id="tenant-country"
-            label="Country"
-            placeholder="e.g. DE, ZA, US"
-            value={tCountry}
-            onChange={(e) => setTCountry(e.target.value.toUpperCase().slice(0, 2))}
-            disabled={!isOwner}
-            inputProps={{ maxLength: 2 }}
-            size="small"
-          />
-        </FormControl>
+        <TextField
+          label="Country"
+          placeholder="e.g. Germany, South Africa, United States"
+          value={tCountry}
+          onChange={(e) => setTCountry(e.target.value)}
+          disabled={!isOwner}
+          size="small"
+          fullWidth
+        />
 
         <FormControl fullWidth size="small" disabled={!isOwner}>
           <InputLabel id="tenant-tz">Timezone</InputLabel>
