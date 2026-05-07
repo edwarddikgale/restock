@@ -141,6 +141,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           ))}
         </TextField>
 
+        <TextField
+          label={`How many in ${value.measureType} is full?`}
+          type="number"
+          size="small"
+          inputProps={{ min: 0, step: 1 }}
+          value={value.defaultQuantity}
+          onChange={(e) => update("defaultQuantity", Number(e.target.value))}
+          fullWidth
+        />
+
         <Typography variant="body2">Preferred purchase stores</Typography>
         {renderedStores.length === 0 ? (
           <Typography variant="caption" color="text.secondary">
@@ -166,16 +176,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             ))}
           </FormGroup>
         )}
-
-        <TextField
-          label={`How many in ${value.measureType} is full?`}
-          type="number"
-          size="small"
-          inputProps={{ min: 0, step: 1 }}
-          value={value.defaultQuantity}
-          onChange={(e) => update("defaultQuantity", Number(e.target.value))}
-          fullWidth
-        />
 
         <TextField
           label="Notes"
