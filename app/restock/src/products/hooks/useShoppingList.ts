@@ -16,6 +16,7 @@ function useShoppingVersion(tenantId: string | null | undefined): number | null 
   const [version, setVersion] = React.useState<number | null>(null);
   React.useEffect(() => {
     if (!tenantId) return;
+    if (!database) return; // RTDB not configured — silently skip live sync
     const r = ref(database, `tenants/${tenantId}/shopping/version`);
     const unsub = onValue(
       r,
