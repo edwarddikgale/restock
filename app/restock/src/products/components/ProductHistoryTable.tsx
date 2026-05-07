@@ -10,10 +10,18 @@ import {
   Paper,
   Chip,
   CircularProgress,
+  Button,
+  Stack,
 } from "@mui/material";
 import { useAuth } from "../../auth/AuthContext";
-import { fetchProductHistory, type ProductHistoryEntry, type HistoryChange } from "../services/historyApi";
+import {
+  fetchProductHistory,
+  type ProductHistoryEntry,
+  type HistoryChange,
+} from "../services/historyApi";
 import humanDate from "../../common/utils/date/humanDate";
+
+const PAGE_SIZE = 5;
 
 function formatValue(v: any): string {
   if (v === null || v === undefined || v === "") return "—";
@@ -57,16 +65,60 @@ interface Props {
 
 export const ProductHistoryTable: React.FC<Props> = ({ productId }) => {
   const { firebaseUser } = useAuth();
-  const [entries, setEntries] = React.useState<ProductHistoryEntry[] | null>(null);
+  const [entries, setEntries] = React.useState<ProductHistoryEntry[]>([]);
+  const [page, setPage] = React.useState<number | null>(null); // null while we don't know
+  const [hasMore, setHasMore] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [busyMore, setBusyMore] = React.useState(false);
 
-  React.useEffect(() => {
+  const loadFirstPage = React.useCallback(async () => {
     if (!firebaseUser || !productId) return;
-    fetchProductHistory(productId, () => firebaseUser.getIdToken())
-      .then(setEntries)
-      .catch(() => setEntries([]));
+    setLoading(true);
+    try {
+      const next = await fetchProductHistory(productId, () => firebaseUser.getIdToken(), PAGE_SIZE);
+      setEntries(next);
+      setPage(1);
+      // We can't know hasMore from this endpoint shape unless we got a full page back —
+      // assume more exist when we got exactly PAGE_SIZE rows.
+      setHasMore(next.length === PAGE_SIZE);
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
   }, [firebaseUser, productId]);
 
-  if (entries === null) {
+  React.useEffect(() => {
+    loadFirstPage();
+  }, [loadFirstPage]);
+
+  const showMore = async () => {
+    if (!firebaseUser || page === null) return;
+    setBusyMore(true);
+    try {
+      // Fetch the next page; the API doesn't accept a `from` cursor so we
+      // request the next sliced page and append.
+      const url = page + 1;
+      const more = await fetchProductHistory(
+        productId,
+        () => firebaseUser.getIdToken(),
+        PAGE_SIZE * url // cumulative window — simpler than per-page paging on this endpoint
+      );
+      setEntries(more);
+      setPage(url);
+      setHasMore(more.length === PAGE_SIZE * url);
+    } finally {
+      setBusyMore(false);
+    }
+  };
+
+  const showLess = () => {
+    setEntries((prev) => prev.slice(0, PAGE_SIZE));
+    setPage(1);
+    setHasMore(true);
+  };
+
+  if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", my: 2 }}>
         <CircularProgress size={20} />
@@ -83,37 +135,52 @@ export const ProductHistoryTable: React.FC<Props> = ({ productId }) => {
   }
 
   return (
-    <Paper variant="outlined" sx={{ overflow: "hidden" }}>
-      <Table size="small" sx={{ "& td, & th": { py: 1, px: 1.25 } }}>
-        <TableHead>
-          <TableRow sx={{ bgcolor: "background.default" }}>
-            <TableCell sx={{ width: 130, fontWeight: 600 }}>When</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Changes</TableCell>
-            <TableCell sx={{ fontWeight: 600, width: 110 }}>By</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {entries.map((e) => (
-            <TableRow key={e._id} hover>
-              <TableCell sx={{ verticalAlign: "top" }}>
-                <Chip label={humanDate(e.createdAt)} size="small" variant="outlined" />
-              </TableCell>
-              <TableCell sx={{ verticalAlign: "top" }}>
-                {e.changes.length === 0 ? (
-                  <Typography variant="caption" color="text.secondary">
-                    no diff captured
-                  </Typography>
-                ) : (
-                  e.changes.map((c, i) => <ChangeCell key={i} change={c} />)
-                )}
-              </TableCell>
-              <TableCell sx={{ verticalAlign: "top" }}>
-                <Typography variant="caption">{e.userName || "—"}</Typography>
-              </TableCell>
+    <>
+      <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+        <Table size="small" sx={{ "& td, & th": { py: 1, px: 1.25 } }}>
+          <TableHead>
+            <TableRow sx={{ bgcolor: "background.default" }}>
+              <TableCell sx={{ width: 130, fontWeight: 600 }}>When</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Changes</TableCell>
+              <TableCell sx={{ fontWeight: 600, width: 110 }}>By</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Paper>
+          </TableHead>
+          <TableBody>
+            {entries.map((e) => (
+              <TableRow key={e._id} hover>
+                <TableCell sx={{ verticalAlign: "top" }}>
+                  <Chip label={humanDate(e.createdAt)} size="small" variant="outlined" />
+                </TableCell>
+                <TableCell sx={{ verticalAlign: "top" }}>
+                  {e.changes.length === 0 ? (
+                    <Typography variant="caption" color="text.secondary">
+                      no diff captured
+                    </Typography>
+                  ) : (
+                    e.changes.map((c, i) => <ChangeCell key={i} change={c} />)
+                  )}
+                </TableCell>
+                <TableCell sx={{ verticalAlign: "top" }}>
+                  <Typography variant="caption">{e.userName || "—"}</Typography>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Paper>
+
+      <Stack direction="row" justifyContent="center" sx={{ mt: 1.25 }}>
+        {hasMore && (
+          <Button size="small" onClick={showMore} disabled={busyMore}>
+            {busyMore ? "Loading…" : "Show more"}
+          </Button>
+        )}
+        {!hasMore && page !== null && page > 1 && (
+          <Button size="small" onClick={showLess}>
+            Show less
+          </Button>
+        )}
+      </Stack>
+    </>
   );
 };

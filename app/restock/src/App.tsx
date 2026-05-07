@@ -5,6 +5,7 @@ import { useAuth } from "./auth/AuthContext";
 import { LoginPage } from "./auth/LoginPage";
 import { InvitationBanner } from "./auth/InvitationBanner";
 import { UserMenu } from "./auth/UserMenu";
+import { ShoppingListProvider } from "./products/state/shopping";
 
 export default function App() {
   const { firebaseUser, loading } = useAuth();
@@ -22,7 +23,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <ShoppingListProvider>
       <AppBar position="sticky" color="primary" enableColorOnDark>
         <Toolbar variant="dense">
           <Box
@@ -52,6 +53,6 @@ export default function App() {
         <InvitationBanner />
         <ProductManager />
       </Container>
-    </>
+    </ShoppingListProvider>
   );
 }

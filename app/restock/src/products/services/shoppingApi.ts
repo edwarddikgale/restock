@@ -109,6 +109,31 @@ export async function bulkAddRunningLow(
   );
 }
 
-export async function finishShopping(getToken: GetToken): Promise<void> {
-  await call("/api/shopping/finish", { method: "POST" }, getToken);
+export async function finishShopping(
+  options: { markAllAsFilled: boolean },
+  getToken: GetToken
+): Promise<{ filledCount: number }> {
+  const data = await call<{ success: boolean; filledCount: number }>(
+    "/api/shopping/finish",
+    { method: "POST", body: JSON.stringify(options) },
+    getToken
+  );
+  return { filledCount: data.filledCount || 0 };
+}
+
+export interface ArchivedListsResponse {
+  lists: ShoppingList[];
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+}
+
+export async function fetchArchivedShoppingLists(
+  page: number,
+  pageSize: number,
+  getToken: GetToken
+): Promise<ArchivedListsResponse> {
+  return call<ArchivedListsResponse>(
+    `/api/shopping/archived?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" },
+    getToken
+  );
 }

@@ -5,7 +5,6 @@ import {
   Typography,
   Checkbox,
   Paper,
-  Chip,
   Button,
   IconButton,
   CircularProgress,
@@ -17,12 +16,15 @@ import {
   DialogActions,
   Divider,
   Collapse,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
+import HistoryIcon from "@mui/icons-material/History";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { useShoppingList } from "../hooks/useShoppingList";
+import { useShoppingList } from "../state/shopping";
 import {
   updateShoppingItem,
   removeShoppingItem,
@@ -41,6 +43,7 @@ export const ShoppingPage: React.FC = () => {
   const [spaces, setSpaces] = React.useState<Space[]>([]);
   const [pending, setPending] = React.useState<Record<string, boolean>>({});
   const [confirmFinish, setConfirmFinish] = React.useState(false);
+  const [markAllFilled, setMarkAllFilled] = React.useState(true);
   const [finishing, setFinishing] = React.useState(false);
   const [showDone, setShowDone] = React.useState(false);
 
@@ -111,7 +114,7 @@ export const ShoppingPage: React.FC = () => {
     if (!firebaseUser) return;
     setFinishing(true);
     try {
-      await finishShopping(() => firebaseUser.getIdToken());
+      await finishShopping({ markAllAsFilled: markAllFilled }, () => firebaseUser.getIdToken());
       await reload();
       setConfirmFinish(false);
     } finally {
@@ -167,17 +170,26 @@ export const ShoppingPage: React.FC = () => {
               </Typography>
             )}
           </Box>
-          {total > 0 && (
-            <Button
-              variant="contained"
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <IconButton
               size="small"
-              startIcon={<ShoppingCartCheckoutIcon />}
-              onClick={() => setConfirmFinish(true)}
-              disabled={finishing}
+              onClick={() => navigate("/shopping/history")}
+              aria-label="View shopping history"
             >
-              Finish
-            </Button>
-          )}
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+            {total > 0 && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<ShoppingCartCheckoutIcon />}
+                onClick={() => setConfirmFinish(true)}
+                disabled={finishing}
+              >
+                Finish
+              </Button>
+            )}
+          </Stack>
         </Stack>
       </Paper>
 
@@ -315,12 +327,35 @@ export const ShoppingPage: React.FC = () => {
       <Dialog open={confirmFinish} onClose={() => !finishing && setConfirmFinish(false)} fullWidth maxWidth="xs">
         <DialogTitle>Finish shopping?</DialogTitle>
         <DialogContent>
-          <DialogContentText>
+          <DialogContentText sx={{ mb: 1.5 }}>
             This list will be archived and a fresh empty list will start.
           </DialogContentText>
-          {doneCount < total && (
-            <Alert severity="warning" sx={{ mt: 1.5 }}>
-              {total - doneCount} {total - doneCount === 1 ? "item is" : "items are"} still unchecked. They'll be archived too.
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={markAllFilled}
+                onChange={(e) => setMarkAllFilled(e.target.checked)}
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  Mark items as filled
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Sets every linked product to 100% stocked. Already-checked items
+                  were filled when you ticked them.
+                </Typography>
+              </Box>
+            }
+          />
+
+          {doneCount < total && !markAllFilled && (
+            <Alert severity="info" sx={{ mt: 1.5 }}>
+              {total - doneCount} {total - doneCount === 1 ? "item is" : "items are"} still
+              unchecked. Their stock levels won't change — turn the toggle on if you want them
+              all marked as filled too.
             </Alert>
           )}
         </DialogContent>

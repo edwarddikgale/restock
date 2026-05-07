@@ -17,7 +17,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import { useShoppingList } from "../hooks/useShoppingList";
+import { useShoppingList } from "../state/shopping";
 import { addShoppingItem, removeShoppingItem } from "../services/shoppingApi";
 import { useProducts } from "../state/products";
 import { useAuth } from "../../auth/AuthContext";

@@ -12,9 +12,10 @@ import { ProductView } from "./ProductView";
 import { ProductAdd } from "./ProductAdd";
 import { ProductEdit } from "./ProductEdit";
 import { ShoppingPage } from "./ShoppingPage";
+import { ShoppingHistoryPage } from "./ShoppingHistoryPage";
 import { SettingsPage } from "../../settings/SettingsPage";
 import { SectionsDashboard } from "./SectionsDashboard";
-import { useShoppingList } from "../hooks/useShoppingList";
+import { useShoppingList } from "../state/shopping";
 
 export const ProductManager: React.FC = () => {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ export const ProductManager: React.FC = () => {
         <Route path="/product/:id/edit" element={<ProductEdit />} />
         <Route path="/add" element={<ProductAdd />} />
         <Route path="/shopping" element={<ShoppingPage />} />
+        <Route path="/shopping/history" element={<ShoppingHistoryPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
 
