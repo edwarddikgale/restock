@@ -1,17 +1,20 @@
 import * as React from "react";
 import { Routes, Route, useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
+import { BottomNavigation, BottomNavigationAction, Paper, Badge } from "@mui/material";
 import ListAltOutlinedIcon from "@mui/icons-material/ListAltOutlined";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
+import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import { ProductList } from "./ProductList";
 import { ProductCategories } from "./ProductCategories";
 import { ProductView } from "./ProductView";
 import { ProductAdd } from "./ProductAdd";
 import { ProductEdit } from "./ProductEdit";
+import { ShoppingPage } from "./ShoppingPage";
 import { SettingsPage } from "../../settings/SettingsPage";
 import { SectionsDashboard } from "./SectionsDashboard";
+import { useShoppingList } from "../hooks/useShoppingList";
 
 export const ProductManager: React.FC = () => {
   const navigate = useNavigate();
@@ -19,8 +22,14 @@ export const ProductManager: React.FC = () => {
   const [params] = useSearchParams();
   const tab = params.get("tab") ?? "list";
 
+  // Live count of items left to buy (real-time via RTDB) — drives the cart badge
+  const { list: shoppingList } = useShoppingList();
+  const cartCount = shoppingList?.items.filter((i) => !i.checked).length ?? 0;
+
   const activeNav = location.pathname.startsWith("/sections")
     ? "sections"
+    : location.pathname.startsWith("/shopping")
+    ? "shopping"
     : location.pathname.startsWith("/settings")
     ? "settings"
     : location.pathname.startsWith("/add")
@@ -35,6 +44,7 @@ export const ProductManager: React.FC = () => {
         <Route path="/product/:id" element={<ProductView />} />
         <Route path="/product/:id/edit" element={<ProductEdit />} />
         <Route path="/add" element={<ProductAdd />} />
+        <Route path="/shopping" element={<ShoppingPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
 
@@ -57,7 +67,6 @@ export const ProductManager: React.FC = () => {
             value="add"
             icon={<AddCircleOutlineIcon />}
             onClick={() => {
-              // Preserve the active section context when adding from the List
               const currentSectionId = params.get("sectionId");
               navigate(
                 currentSectionId
@@ -65,6 +74,16 @@ export const ProductManager: React.FC = () => {
                   : "/add"
               );
             }}
+          />
+          <BottomNavigationAction
+            label="Shopping"
+            value="shopping"
+            icon={
+              <Badge badgeContent={cartCount} color="primary" max={99}>
+                <ShoppingCartOutlinedIcon />
+              </Badge>
+            }
+            onClick={() => navigate("/shopping")}
           />
           <BottomNavigationAction
             label="Settings"

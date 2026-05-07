@@ -15,6 +15,10 @@ import {
 import TuneIcon from "@mui/icons-material/Tune";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
+import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import { useShoppingList } from "../hooks/useShoppingList";
+import { addShoppingItem, removeShoppingItem } from "../services/shoppingApi";
 import { useProducts } from "../state/products";
 import { useAuth } from "../../auth/AuthContext";
 import { fetchMySpaces, type Space } from "../services/spacesApi";
@@ -28,6 +32,7 @@ import type { Product } from "../types";
 import "../styles/product-list.css";
 
 type StockFilter = "all" | "low" | "mid" | "full";
+type ListFilter = "all" | "on" | "off";
 const STORE_ANY = "__ANY_STORE__";
 const SECTION_ALL = "__ALL_SECTIONS__";
 const SCROLL_KEY = "productList:scroll";
@@ -54,6 +59,7 @@ export const ProductList: React.FC = () => {
   const stockFilter = (params.get("stock") as StockFilter) || "all";
   const storeFilter = params.get("store") || STORE_ANY;
   const sectionFilter = params.get("sectionId") || SECTION_ALL;
+  const listFilter = (params.get("list") as ListFilter) || "all";
   const category = params.get("category");
 
   const setFilterParam = React.useCallback(
@@ -76,11 +82,26 @@ export const ProductList: React.FC = () => {
   // Stock-edit dialog state
   const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
 
+  // Live shopping list — used to mark cards and gate the +/− cart button
+  const { list: shoppingList, reload: reloadShoppingList } = useShoppingList();
+  const productIdsOnList = React.useMemo(() => {
+    const s = new Set<string>();
+    shoppingList?.items.forEach((i) => i.productId && s.add(i.productId));
+    return s;
+  }, [shoppingList]);
+  const itemIdByProductId = React.useMemo(() => {
+    const m = new Map<string, string>();
+    shoppingList?.items.forEach((i) => i.productId && m.set(i.productId, i._id));
+    return m;
+  }, [shoppingList]);
+  const [cartPending, setCartPending] = React.useState<Record<string, boolean>>({});
+
   // Number of active filters (excluding search) — drives the toggle pill
   const activeFilterCount =
     (stockFilter !== "all" ? 1 : 0) +
     (storeFilter !== STORE_ANY ? 1 : 0) +
     (sectionFilter !== SECTION_ALL ? 1 : 0) +
+    (listFilter !== "all" ? 1 : 0) +
     (query.trim() ? 1 : 0);
 
   // Default-expand if user has filters active (so they see what's filtering),
@@ -143,6 +164,11 @@ export const ProductList: React.FC = () => {
     .filter((p) =>
       storeFilter !== STORE_ANY ? p.preferredStores.includes(storeFilter) : true
     )
+    .filter((p) => {
+      if (listFilter === "on") return productIdsOnList.has(p.id);
+      if (listFilter === "off") return !productIdsOnList.has(p.id);
+      return true;
+    })
     .filter((p) =>
       query
         ? p.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -153,6 +179,25 @@ export const ProductList: React.FC = () => {
 
   const handleStockSave = async (id: string, percentageLeft: number) => {
     await update(id, { percentageLeft });
+  };
+
+  const toggleCart = async (productId: string) => {
+    if (!firebaseUser) return;
+    setCartPending((p) => ({ ...p, [productId]: true }));
+    try {
+      const existingItemId = itemIdByProductId.get(productId);
+      if (existingItemId) {
+        await removeShoppingItem(existingItemId, () => firebaseUser.getIdToken());
+      } else {
+        await addShoppingItem({ productId }, () => firebaseUser.getIdToken());
+      }
+      await reloadShoppingList();
+    } finally {
+      setCartPending((prev) => {
+        const { [productId]: _omit, ...rest } = prev;
+        return rest;
+      });
+    }
   };
 
   if (loading) return <Typography variant="body2">Loading products…</Typography>;
@@ -244,6 +289,34 @@ export const ProductList: React.FC = () => {
             </Box>
           )}
 
+          {/* Shopping-list filter */}
+          <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
+            <Stack direction="row" spacing={0.75} sx={{ flexWrap: "nowrap" }}>
+              <Chip
+                label="All products"
+                color={listFilter === "all" ? "primary" : "default"}
+                variant={listFilter === "all" ? "filled" : "outlined"}
+                onClick={() => setFilterParam("list", null, "all")}
+                sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
+              />
+              <Chip
+                icon={<ShoppingCartIcon sx={{ fontSize: 16 }} />}
+                label={`On list${productIdsOnList.size ? ` (${productIdsOnList.size})` : ""}`}
+                color={listFilter === "on" ? "primary" : "default"}
+                variant={listFilter === "on" ? "filled" : "outlined"}
+                onClick={() => setFilterParam("list", "on", "all")}
+                sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
+              />
+              <Chip
+                label="Not on list"
+                color={listFilter === "off" ? "primary" : "default"}
+                variant={listFilter === "off" ? "filled" : "outlined"}
+                onClick={() => setFilterParam("list", "off", "all")}
+                sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
+              />
+            </Stack>
+          </Box>
+
           {/* Section filter — same height as the store chips for visual consistency */}
           {spaces.length > 0 && (
             <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
@@ -279,43 +352,87 @@ export const ProductList: React.FC = () => {
           const isOut = p.percentageLeft === 0;
           const goToProduct = () => navigate(`/product/${p.id}`);
 
+          const onList = productIdsOnList.has(p.id);
+          const cartBusy = !!cartPending[p.id];
+
           return (
-            <Card key={p.id} variant="outlined" sx={{ borderRadius: 1.5 }}>
-              {/* Row 1: name + % — clickable for navigation */}
-              <Box
-                onClick={goToProduct}
-                sx={{
-                  px: 1.25,
-                  pt: 0.75,
-                  pb: 0.5,
-                  cursor: "pointer",
-                  "&:active": { bgcolor: "action.hover" },
-                }}
+            <Card
+              key={p.id}
+              variant="outlined"
+              sx={{
+                borderRadius: 1.5,
+                ...(onList
+                  ? {
+                      borderColor: "primary.main",
+                      borderWidth: 1.5,
+                    }
+                  : {}),
+              }}
+            >
+              {/* Row 1: name + cart toggle + % */}
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={0.5}
+                sx={{ px: 1.25, pt: 0.75, pb: 0.5 }}
               >
-                <Stack direction="row" alignItems="baseline" spacing={1}>
-                  <Typography
-                    variant="subtitle2"
-                    noWrap
-                    title={p.name}
-                    sx={{
-                      flex: 1,
-                      minWidth: 0,
-                      fontWeight: 600,
-                      color: isOut ? "error.main" : "text.primary",
-                      textDecoration: isOut ? "line-through" : "none",
-                      opacity: isOut ? 0.7 : 1,
-                    }}
-                  >
-                    {p.name}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 700, color: trackColor, flexShrink: 0 }}
-                  >
-                    {Math.round(pct)}%
-                  </Typography>
-                </Stack>
-              </Box>
+                <Box
+                  onClick={goToProduct}
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    cursor: "pointer",
+                    "&:active": { bgcolor: "action.hover" },
+                    py: 0.25,
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <Typography
+                      variant="subtitle2"
+                      noWrap
+                      title={p.name}
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        fontWeight: 600,
+                        color: isOut ? "error.main" : "text.primary",
+                        textDecoration: isOut ? "line-through" : "none",
+                        opacity: isOut ? 0.7 : 1,
+                      }}
+                    >
+                      {p.name}
+                    </Typography>
+                  </Stack>
+                </Box>
+
+                {/* Cart toggle: filled when on list, outlined when not */}
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCart(p.id);
+                  }}
+                  disabled={cartBusy}
+                  aria-label={onList ? "Remove from shopping list" : "Add to shopping list"}
+                  sx={{
+                    color: onList ? "primary.main" : "text.secondary",
+                    p: 0.5,
+                  }}
+                >
+                  {onList ? (
+                    <ShoppingCartIcon fontSize="small" />
+                  ) : (
+                    <AddShoppingCartIcon fontSize="small" />
+                  )}
+                </IconButton>
+
+                <Typography
+                  variant="body2"
+                  sx={{ fontWeight: 700, color: trackColor, flexShrink: 0, ml: 0.5 }}
+                >
+                  {Math.round(pct)}%
+                </Typography>
+              </Stack>
 
               {/* Row 2: visual stock bar — TAP to open edit dialog (no drag, no scroll conflict) */}
               <Box

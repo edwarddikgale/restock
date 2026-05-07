@@ -1,0 +1,17 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "tenants": {
+      "$tenantId": {
+        "shopping": {
+          "version": {
+            ".read": "auth != null",
+            ".write": false
+          }
+        }
+      }
+    }
+  }
+}
