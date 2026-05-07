@@ -93,12 +93,36 @@ const COMMON_TIMEZONES = [
 ];
 
 export const SettingsPage: React.FC = () => {
-  const { firebaseUser, tenant: tenantFromCtx } = useAuth();
+  const { firebaseUser, tenant: tenantFromCtx, userProfile, updateProfile } = useAuth();
 
   const getToken = React.useCallback(
     () => (firebaseUser ? firebaseUser.getIdToken() : Promise.resolve(null)),
     [firebaseUser]
   );
+
+  // ------- My profile (display name) -------
+  const [profileDisplayName, setProfileDisplayName] = React.useState("");
+  const [profileBusy, setProfileBusy] = React.useState(false);
+  const [profileSaved, setProfileSaved] = React.useState(false);
+  const [profileError, setProfileError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setProfileDisplayName(userProfile?.displayName || "");
+  }, [userProfile?.displayName]);
+
+  const saveProfile = async () => {
+    setProfileBusy(true);
+    setProfileError(null);
+    setProfileSaved(false);
+    try {
+      await updateProfile({ displayName: profileDisplayName.trim() });
+      setProfileSaved(true);
+    } catch (e: any) {
+      setProfileError(e?.message || "Failed to save");
+    } finally {
+      setProfileBusy(false);
+    }
+  };
 
   // ------- Tenant details + members -------
   const [tm, setTm] = React.useState<TenantWithMembers | null>(null);
@@ -384,6 +408,41 @@ export const SettingsPage: React.FC = () => {
         Settings
       </Typography>
 
+      {/* ------- My profile ------- */}
+      <SectionHeading>My profile</SectionHeading>
+      {profileError && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {profileError}
+        </Alert>
+      )}
+      {profileSaved && (
+        <Alert severity="success" sx={{ mb: 1 }}>
+          Saved.
+        </Alert>
+      )}
+      <Stack spacing={1.25}>
+        <TextField
+          label="Display name"
+          size="small"
+          value={profileDisplayName}
+          onChange={(e) => setProfileDisplayName(e.target.value)}
+          placeholder={userProfile?.fullName ? `e.g. ${userProfile.fullName.split(" ")[0]}` : "Eddie"}
+          helperText="Shown across the app — e.g. 'added by Eddie'. Leave blank to use your full name."
+          fullWidth
+        />
+        <Box>
+          <Button
+            onClick={saveProfile}
+            variant="contained"
+            disabled={profileBusy || profileDisplayName === (userProfile?.displayName || "")}
+          >
+            {profileBusy ? <CircularProgress size={18} color="inherit" /> : "Save"}
+          </Button>
+        </Box>
+      </Stack>
+
+      <Divider sx={{ my: 2 }} />
+
       {/* ------- Tenant header ------- */}
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
@@ -557,7 +616,7 @@ export const SettingsPage: React.FC = () => {
                       size="small"
                       color="error"
                       onClick={() => confirmRemove(m)}
-                      aria-label={`Remove ${m.fullName || m.email}`}
+                      aria-label={`Remove ${m.preferredName || m.email}`}
                     >
                       <PersonOffOutlinedIcon fontSize="small" />
                     </IconButton>
@@ -573,7 +632,7 @@ export const SettingsPage: React.FC = () => {
                   primary={
                     <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flexWrap: "wrap" }}>
                       <Typography variant="body2" fontWeight={500}>
-                        {m.fullName || m.email || m.userId}
+                        {m.preferredName || m.fullName || m.email || m.userId}
                       </Typography>
                       {m.isYou && <Chip size="small" label="You" />}
                       <Chip
@@ -618,7 +677,8 @@ export const SettingsPage: React.FC = () => {
         <DialogTitle>Remove member?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            <strong>{removingMember?.fullName || removingMember?.email}</strong> will lose access to
+            <strong>{removingMember?.preferredName || removingMember?.fullName || removingMember?.email}</strong>{" "}
+            will lose access to
             this workspace. They'll need a new invitation to rejoin.
           </DialogContentText>
           {removeError && (

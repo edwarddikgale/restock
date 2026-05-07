@@ -12,7 +12,9 @@ import { auth } from "../config/firebase";
 import {
   fetchMyTenants,
   setActiveTenant as setActiveTenantApi,
+  updateMyProfile,
   type TenantSummary,
+  type UserProfilePatch,
 } from "./tenantApi";
 
 const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8080").replace(/\/+$/, "");
@@ -21,6 +23,7 @@ export interface UserProfile {
   _id: string;
   userId: string;
   fullName: string;
+  displayName?: string;
   email: string;
 }
 
@@ -43,6 +46,7 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   switchTenant: (tenantId: string) => Promise<void>;
+  updateProfile: (patch: UserProfilePatch) => Promise<UserProfile>;
   claimSharedData: () => Promise<{ migratedProducts: number; migratedSpaces: number }>;
 }
 
@@ -112,6 +116,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     window.location.reload();
   };
 
+  const updateProfile = async (patch: UserProfilePatch): Promise<UserProfile> => {
+    if (!firebaseUser) throw new Error("Not authenticated");
+    const updated = await updateMyProfile(patch, () => firebaseUser.getIdToken());
+    setUserProfile(updated as UserProfile);
+    return updated as UserProfile;
+  };
+
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
   };
@@ -152,6 +163,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         signInWithGoogle,
         logout,
         switchTenant,
+        updateProfile,
         claimSharedData,
       }}
     >

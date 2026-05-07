@@ -37,7 +37,13 @@ export const UserMenu: React.FC = () => {
   if (!firebaseUser) return null;
 
   const open = Boolean(anchorEl);
-  const displayName = userProfile?.fullName || firebaseUser.displayName || firebaseUser.email || "Account";
+  // Prefer the user's chosen displayName, then fullName, then Firebase, then email.
+  const displayName =
+    userProfile?.displayName ||
+    userProfile?.fullName ||
+    firebaseUser.displayName ||
+    firebaseUser.email ||
+    "Account";
   const email = userProfile?.email || firebaseUser.email || "";
   const photoURL = firebaseUser.photoURL || undefined;
 

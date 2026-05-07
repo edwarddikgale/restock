@@ -26,6 +26,10 @@ export interface TenantMember {
   userId: string;
   role: "owner" | "admin" | "member";
   fullName: string;
+  /** Optional informal name set by the user themselves. */
+  displayName?: string;
+  /** Server-resolved name to actually render: displayName || fullName || email-local-part. */
+  preferredName: string;
   email: string;
   lastLoginAt: string | null;
   isYou: boolean;
@@ -91,6 +95,31 @@ export async function removeTenantMember(userId: string, getToken: GetToken): Pr
     { method: "DELETE" },
     getToken
   );
+}
+
+export interface UserProfilePatch {
+  displayName?: string;
+  fullName?: string;
+}
+
+export interface UserProfileFull {
+  _id: string;
+  userId: string;
+  fullName: string;
+  displayName?: string;
+  email: string;
+}
+
+export async function updateMyProfile(
+  patch: UserProfilePatch,
+  getToken: GetToken
+): Promise<UserProfileFull> {
+  const data = await call<{ userProfile: UserProfileFull }>(
+    "/api/auth/me",
+    { method: "PATCH", body: JSON.stringify(patch) },
+    getToken
+  );
+  return data.userProfile;
 }
 
 export async function updateTenant(
