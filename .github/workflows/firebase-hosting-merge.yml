@@ -1,5 +1,6 @@
 # Deploy frontend (app/restock) to Firebase Hosting on merge to main.
-# Bumped to retrigger after FIREBASE_AUTH_DOMAIN secret was cleaned of trailing newline.
+# Bumped to retrigger build after FIREBASE_DATABASE_URL secret was added,
+# so the new bundle gets the URL baked in for live shopping-list sync.
 name: Deploy to Firebase Hosting on merge
 on:
   push:
