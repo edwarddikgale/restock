@@ -23,7 +23,13 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
+import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditIcon from "@mui/icons-material/Edit";
 import CheckIcon from "@mui/icons-material/Check";
@@ -34,10 +40,13 @@ import { useAuth } from "../auth/AuthContext";
 import {
   fetchTenantMembers,
   updateTenant,
+  removeTenantMember,
   type TenantWithMembers,
+  type TenantMember,
   type TenantType,
   type CompanySize,
 } from "../auth/tenantApi";
+import humanDate from "../common/utils/date/humanDate";
 import {
   fetchSentInvitations,
   createInvitation,
@@ -132,6 +141,32 @@ export const SettingsPage: React.FC = () => {
   const me = tm?.members.find((m) => m.isYou);
   const canManage = me?.role === "owner" || me?.role === "admin";
   const isOwner = me?.role === "owner";
+
+  // ------- Remove-member confirm dialog state -------
+  const [removingMember, setRemovingMember] = React.useState<TenantMember | null>(null);
+  const [removeBusy, setRemoveBusy] = React.useState(false);
+  const [removeError, setRemoveError] = React.useState<string | null>(null);
+
+  const confirmRemove = (m: TenantMember) => {
+    setRemoveError(null);
+    setRemovingMember(m);
+  };
+
+  const executeRemove = async () => {
+    if (!removingMember) return;
+    setRemoveBusy(true);
+    setRemoveError(null);
+    try {
+      await removeTenantMember(removingMember.userId, getToken);
+      setRemovingMember(null);
+      const next = await fetchTenantMembers(getToken);
+      setTm(next);
+    } catch (e: any) {
+      setRemoveError(e?.message || "Failed to remove member");
+    } finally {
+      setRemoveBusy(false);
+    }
+  };
 
   const saveTenant = async () => {
     setTenantBusy(true);
@@ -512,34 +547,99 @@ export const SettingsPage: React.FC = () => {
         </Box>
       ) : (
         <List dense disablePadding>
-          {tm.members.map((m) => (
-            <ListItem key={m.userId} disableGutters>
-              <ListItemAvatar>
-                <Avatar sx={{ bgcolor: m.role === "owner" ? "primary.light" : "grey.400" }}>
-                  <PersonIcon />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
-                primary={
-                  <Stack direction="row" spacing={0.75} alignItems="center">
-                    <Typography variant="body2" fontWeight={500}>
-                      {m.fullName || m.email || m.userId}
-                    </Typography>
-                    {m.isYou && <Chip size="small" label="You" />}
-                    <Chip
+          {tm.members.map((m) => {
+            const canRemove = isOwner && !m.isYou && m.role !== "owner";
+            const lastSeen = m.lastLoginAt ? humanDate(m.lastLoginAt) : "never";
+            return (
+              <ListItem
+                key={m.userId}
+                disableGutters
+                secondaryAction={
+                  canRemove ? (
+                    <IconButton
+                      edge="end"
                       size="small"
-                      label={m.role}
-                      color={m.role === "owner" ? "primary" : "default"}
-                      variant="outlined"
-                    />
-                  </Stack>
+                      color="error"
+                      onClick={() => confirmRemove(m)}
+                      aria-label={`Remove ${m.fullName || m.email}`}
+                    >
+                      <PersonOffOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  ) : undefined
                 }
-                secondary={m.email && m.email !== m.fullName ? m.email : null}
-              />
-            </ListItem>
-          ))}
+              >
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: m.role === "owner" ? "primary.light" : "grey.400" }}>
+                    <PersonIcon />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flexWrap: "wrap" }}>
+                      <Typography variant="body2" fontWeight={500}>
+                        {m.fullName || m.email || m.userId}
+                      </Typography>
+                      {m.isYou && <Chip size="small" label="You" />}
+                      <Chip
+                        size="small"
+                        label={m.role}
+                        color={m.role === "owner" ? "primary" : "default"}
+                        variant="outlined"
+                      />
+                    </Stack>
+                  }
+                  secondary={
+                    <Stack
+                      direction="row"
+                      spacing={0.75}
+                      alignItems="center"
+                      sx={{ flexWrap: "wrap" }}
+                    >
+                      {m.email && m.email !== m.fullName && (
+                        <Typography variant="caption" color="text.secondary">
+                          {m.email}
+                        </Typography>
+                      )}
+                      <Typography variant="caption" color="text.secondary">
+                        Last seen: {lastSeen}
+                      </Typography>
+                    </Stack>
+                  }
+                />
+              </ListItem>
+            );
+          })}
         </List>
       )}
+
+      {/* Confirm remove member dialog */}
+      <Dialog
+        open={removingMember !== null}
+        onClose={() => !removeBusy && setRemovingMember(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Remove member?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>{removingMember?.fullName || removingMember?.email}</strong> will lose access to
+            this workspace. They'll need a new invitation to rejoin.
+          </DialogContentText>
+          {removeError && (
+            <Alert severity="error" sx={{ mt: 1.5 }}>
+              {removeError}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemovingMember(null)} disabled={removeBusy}>
+            Cancel
+          </Button>
+          <Button onClick={executeRemove} color="error" variant="contained" disabled={removeBusy}>
+            {removeBusy ? "Removing…" : "Remove"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ------- Invite member ------- */}
       {canManage && (

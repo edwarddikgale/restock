@@ -27,6 +27,7 @@ export interface TenantMember {
   role: "owner" | "admin" | "member";
   fullName: string;
   email: string;
+  lastLoginAt: string | null;
   isYou: boolean;
 }
 
@@ -80,6 +81,14 @@ export async function setActiveTenant(tenantId: string, getToken: GetToken): Pro
   await call(
     "/api/auth/active-tenant",
     { method: "POST", body: JSON.stringify({ tenantId }) },
+    getToken
+  );
+}
+
+export async function removeTenantMember(userId: string, getToken: GetToken): Promise<void> {
+  await call(
+    `/api/auth/tenant/members/${encodeURIComponent(userId)}`,
+    { method: "DELETE" },
     getToken
   );
 }

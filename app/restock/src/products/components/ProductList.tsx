@@ -9,7 +9,12 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Collapse,
+  IconButton,
 } from "@mui/material";
+import TuneIcon from "@mui/icons-material/Tune";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import CloseIcon from "@mui/icons-material/Close";
 import { useProducts } from "../state/products";
 import { useAuth } from "../../auth/AuthContext";
 import { fetchMySpaces, type Space } from "../services/spacesApi";
@@ -70,6 +75,22 @@ export const ProductList: React.FC = () => {
 
   // Stock-edit dialog state
   const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
+
+  // Number of active filters (excluding search) — drives the toggle pill
+  const activeFilterCount =
+    (stockFilter !== "all" ? 1 : 0) +
+    (storeFilter !== STORE_ANY ? 1 : 0) +
+    (sectionFilter !== SECTION_ALL ? 1 : 0) +
+    (query.trim() ? 1 : 0);
+
+  // Default-expand if user has filters active (so they see what's filtering),
+  // collapse otherwise for a cleaner first-paint.
+  const [filtersOpen, setFiltersOpen] = React.useState(activeFilterCount > 0);
+
+  const clearAll = () => {
+    const next = new URLSearchParams();
+    setParams(next, { replace: true });
+  };
 
   React.useEffect(() => {
     if (!firebaseUser) return;
@@ -141,81 +162,114 @@ export const ProductList: React.FC = () => {
     <Box>
       <RecentActivity />
 
-      <TextField
-        size="small"
-        fullWidth
-        placeholder="Search…"
-        value={query}
-        onChange={(e) => setFilterParam("q", e.target.value, "")}
-        sx={{ mb: 1 }}
-      />
-
-      {/* Stock-level filter */}
-      <ToggleButtonGroup
-        size="small"
-        exclusive
-        value={stockFilter}
-        onChange={(_, v) => v && setFilterParam("stock", v, "all")}
-        fullWidth
-        sx={{ mb: 1, "& .MuiToggleButton-root": { fontSize: "0.72rem", py: 0.4 } }}
-      >
-        <ToggleButton value="all">All</ToggleButton>
-        <ToggleButton value="low">Low {stockCounts.low ? `(${stockCounts.low})` : ""}</ToggleButton>
-        <ToggleButton value="mid">On hand {stockCounts.mid ? `(${stockCounts.mid})` : ""}</ToggleButton>
-        <ToggleButton value="full">Full {stockCounts.full ? `(${stockCounts.full})` : ""}</ToggleButton>
-      </ToggleButtonGroup>
-
-      {/* Store filter */}
-      {storeOptions.length > 0 && (
-        <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
-          <Stack direction="row" spacing={0.75} sx={{ flexWrap: "nowrap" }}>
-            <Chip
-              label="Any store"
-              color={storeFilter === STORE_ANY ? "primary" : "default"}
-              variant={storeFilter === STORE_ANY ? "filled" : "outlined"}
-              onClick={() => setFilterParam("store", null, STORE_ANY)}
-              sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
+      {/* Collapsible Search & Filters toggle */}
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+        <Chip
+          icon={<TuneIcon sx={{ fontSize: 18 }} />}
+          deleteIcon={
+            <KeyboardArrowDownIcon
+              sx={{
+                transform: filtersOpen ? "rotate(180deg)" : "rotate(0)",
+                transition: "transform 0.18s",
+              }}
             />
-            {storeOptions.map((s) => (
-              <Chip
-                key={s._id}
-                label={s.name}
-                color={storeFilter === s.name ? "primary" : "default"}
-                variant={storeFilter === s.name ? "filled" : "outlined"}
-                onClick={() => setFilterParam("store", s.name, STORE_ANY)}
-                sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
-              />
-            ))}
-          </Stack>
-        </Box>
-      )}
+          }
+          onDelete={() => setFiltersOpen((v) => !v)}
+          label={
+            activeFilterCount > 0
+              ? `Search & filter · ${activeFilterCount}`
+              : "Search & filter"
+          }
+          color={activeFilterCount > 0 ? "primary" : "default"}
+          variant={activeFilterCount > 0 ? "filled" : "outlined"}
+          onClick={() => setFiltersOpen((v) => !v)}
+          sx={{ height: 36, fontSize: "0.85rem", px: 0.5 }}
+        />
+        <Box sx={{ flex: 1 }} />
+        {activeFilterCount > 0 && (
+          <IconButton size="small" onClick={clearAll} aria-label="Clear filters">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        )}
+      </Stack>
 
-      {/* Section filter — defaults to "All sections" */}
-      {spaces.length > 0 && (
-        <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
-          <Stack direction="row" spacing={0.75} sx={{ flexWrap: "nowrap" }}>
-            <Chip
-              label="All sections"
-              color={sectionFilter === SECTION_ALL ? "primary" : "default"}
-              variant={sectionFilter === SECTION_ALL ? "filled" : "outlined"}
-              onClick={() => setFilterParam("sectionId", null, SECTION_ALL)}
-              size="small"
-              sx={{ flexShrink: 0 }}
-            />
-            {spaces.map((s) => (
-              <Chip
-                key={s._id}
-                label={s.name}
-                onClick={() => setFilterParam("sectionId", s._id, SECTION_ALL)}
-                color={sectionFilter === s._id ? "primary" : "default"}
-                variant={sectionFilter === s._id ? "filled" : "outlined"}
-                size="small"
-                sx={{ flexShrink: 0 }}
-              />
-            ))}
-          </Stack>
+      <Collapse in={filtersOpen} timeout="auto" unmountOnExit>
+        <Box sx={{ mb: 1 }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Search…"
+            value={query}
+            onChange={(e) => setFilterParam("q", e.target.value, "")}
+            sx={{ mb: 1 }}
+          />
+
+          {/* Stock-level filter */}
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={stockFilter}
+            onChange={(_, v) => v && setFilterParam("stock", v, "all")}
+            fullWidth
+            sx={{ mb: 1, "& .MuiToggleButton-root": { fontSize: "0.72rem", py: 0.4 } }}
+          >
+            <ToggleButton value="all">All</ToggleButton>
+            <ToggleButton value="low">Low {stockCounts.low ? `(${stockCounts.low})` : ""}</ToggleButton>
+            <ToggleButton value="mid">On hand {stockCounts.mid ? `(${stockCounts.mid})` : ""}</ToggleButton>
+            <ToggleButton value="full">Full {stockCounts.full ? `(${stockCounts.full})` : ""}</ToggleButton>
+          </ToggleButtonGroup>
+
+          {/* Store filter */}
+          {storeOptions.length > 0 && (
+            <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
+              <Stack direction="row" spacing={0.75} sx={{ flexWrap: "nowrap" }}>
+                <Chip
+                  label="Any store"
+                  color={storeFilter === STORE_ANY ? "primary" : "default"}
+                  variant={storeFilter === STORE_ANY ? "filled" : "outlined"}
+                  onClick={() => setFilterParam("store", null, STORE_ANY)}
+                  sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
+                />
+                {storeOptions.map((s) => (
+                  <Chip
+                    key={s._id}
+                    label={s.name}
+                    color={storeFilter === s.name ? "primary" : "default"}
+                    variant={storeFilter === s.name ? "filled" : "outlined"}
+                    onClick={() => setFilterParam("store", s.name, STORE_ANY)}
+                    sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Section filter — same height as the store chips for visual consistency */}
+          {spaces.length > 0 && (
+            <Box sx={{ overflowX: "auto", mx: -1, px: 1, mb: 1 }}>
+              <Stack direction="row" spacing={0.75} sx={{ flexWrap: "nowrap" }}>
+                <Chip
+                  label="All sections"
+                  color={sectionFilter === SECTION_ALL ? "primary" : "default"}
+                  variant={sectionFilter === SECTION_ALL ? "filled" : "outlined"}
+                  onClick={() => setFilterParam("sectionId", null, SECTION_ALL)}
+                  sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
+                />
+                {spaces.map((s) => (
+                  <Chip
+                    key={s._id}
+                    label={s.name}
+                    onClick={() => setFilterParam("sectionId", s._id, SECTION_ALL)}
+                    color={sectionFilter === s._id ? "primary" : "default"}
+                    variant={sectionFilter === s._id ? "filled" : "outlined"}
+                    sx={{ flexShrink: 0, height: 36, fontSize: "0.85rem", px: 0.5 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
         </Box>
-      )}
+      </Collapse>
 
       {/* Cards */}
       <Stack spacing={0.5} sx={{ pb: 9 }}>
