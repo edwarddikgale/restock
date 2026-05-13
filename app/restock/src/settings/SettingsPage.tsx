@@ -29,6 +29,8 @@ import {
   DialogContentText,
   DialogActions,
   Switch,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -137,6 +139,7 @@ export const SettingsPage: React.FC = () => {
   const [notifyEmail, setNotifyEmail] = React.useState(true);
   const [notifyAtHour, setNotifyAtHour] = React.useState(16);
   const [notifyTimezone, setNotifyTimezone] = React.useState("Europe/Berlin");
+  const [notifyDays, setNotifyDays] = React.useState<number[]>([1, 5]);
   const [notifyBusy, setNotifyBusy] = React.useState(false);
   const [notifySaved, setNotifySaved] = React.useState(false);
 
@@ -144,7 +147,18 @@ export const SettingsPage: React.FC = () => {
     setNotifyEmail(userProfile?.notifyEmail !== false);
     setNotifyAtHour(typeof userProfile?.notifyAtHour === "number" ? userProfile.notifyAtHour : 16);
     setNotifyTimezone(userProfile?.notifyTimezone || browserTz);
-  }, [userProfile?.notifyEmail, userProfile?.notifyAtHour, userProfile?.notifyTimezone, browserTz]);
+    setNotifyDays(
+      Array.isArray(userProfile?.notifyDays) && userProfile!.notifyDays!.length > 0
+        ? userProfile!.notifyDays!
+        : [1, 5]
+    );
+  }, [
+    userProfile?.notifyEmail,
+    userProfile?.notifyAtHour,
+    userProfile?.notifyTimezone,
+    userProfile?.notifyDays,
+    browserTz,
+  ]);
 
   const saveNotifications = async () => {
     setNotifyBusy(true);
@@ -154,6 +168,7 @@ export const SettingsPage: React.FC = () => {
         notifyEmail,
         notifyAtHour,
         notifyTimezone,
+        notifyDays,
       });
       setNotifySaved(true);
     } catch (e: any) {
@@ -568,6 +583,42 @@ export const SettingsPage: React.FC = () => {
           ))}
         </TextField>
 
+        {/* Weekday picker — multi-select chip row */}
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+            Days to send
+          </Typography>
+          <ToggleButtonGroup
+            value={notifyDays}
+            onChange={(_, v: number[]) => v && setNotifyDays(v)}
+            size="small"
+            disabled={!notifyEmail}
+            sx={{
+              flexWrap: "wrap",
+              "& .MuiToggleButton-root": {
+                px: 1.25,
+                py: 0.5,
+                fontSize: "0.78rem",
+                minWidth: 44,
+                borderRadius: 1,
+              },
+            }}
+          >
+            <ToggleButton value={1}>Mon</ToggleButton>
+            <ToggleButton value={2}>Tue</ToggleButton>
+            <ToggleButton value={3}>Wed</ToggleButton>
+            <ToggleButton value={4}>Thu</ToggleButton>
+            <ToggleButton value={5}>Fri</ToggleButton>
+            <ToggleButton value={6}>Sat</ToggleButton>
+            <ToggleButton value={0}>Sun</ToggleButton>
+          </ToggleButtonGroup>
+          {notifyDays.length === 0 && notifyEmail && (
+            <Typography variant="caption" color="warning.main" sx={{ display: "block", mt: 0.5 }}>
+              No days selected — auto digest won't send. Use "Send digest now" or pick at least one day.
+            </Typography>
+          )}
+        </Box>
+
         <TextField
           label="Timezone"
           size="small"
@@ -596,7 +647,9 @@ export const SettingsPage: React.FC = () => {
               notifyBusy ||
               (notifyEmail === (userProfile?.notifyEmail !== false) &&
                 notifyAtHour === (userProfile?.notifyAtHour ?? 16) &&
-                notifyTimezone === (userProfile?.notifyTimezone || browserTz))
+                notifyTimezone === (userProfile?.notifyTimezone || browserTz) &&
+                JSON.stringify(notifyDays) ===
+                  JSON.stringify(userProfile?.notifyDays?.length ? userProfile.notifyDays : [1, 5]))
             }
           >
             {notifyBusy ? <CircularProgress size={18} color="inherit" /> : "Save notifications"}

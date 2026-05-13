@@ -103,6 +103,7 @@ export interface UserProfilePatch {
   notifyEmail?: boolean;
   notifyAtHour?: number;
   notifyTimezone?: string;
+  notifyDays?: number[];
 }
 
 export interface UserProfileFull {
@@ -114,6 +115,7 @@ export interface UserProfileFull {
   notifyEmail?: boolean;
   notifyAtHour?: number;
   notifyTimezone?: string;
+  notifyDays?: number[];
 }
 
 export async function updateMyProfile(

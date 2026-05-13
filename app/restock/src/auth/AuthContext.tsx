@@ -28,6 +28,7 @@ export interface UserProfile {
   notifyEmail?: boolean;
   notifyAtHour?: number;
   notifyTimezone?: string;
+  notifyDays?: number[];
 }
 
 export interface Tenant {
