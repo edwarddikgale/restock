@@ -22,6 +22,7 @@ import {
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import HistoryIcon from "@mui/icons-material/History";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useShoppingList } from "../state/shopping";
@@ -179,6 +180,14 @@ export const ShoppingPage: React.FC = () => {
             )}
           </Box>
           <Stack direction="row" spacing={0.5} alignItems="center">
+            <IconButton
+              size="small"
+              onClick={() => navigate("/intake")}
+              aria-label="Smart intake (type, voice, receipt)"
+              title="Smart intake"
+            >
+              <AutoAwesomeIcon fontSize="small" />
+            </IconButton>
             <IconButton
               size="small"
               onClick={() => navigate("/shopping/history")}

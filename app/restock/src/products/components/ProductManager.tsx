@@ -13,6 +13,7 @@ import { ProductAdd } from "./ProductAdd";
 import { ProductEdit } from "./ProductEdit";
 import { ShoppingPage } from "./ShoppingPage";
 import { ShoppingHistoryPage } from "./ShoppingHistoryPage";
+import { IntakePage } from "./IntakePage";
 import { SettingsPage } from "../../settings/SettingsPage";
 import { SectionsDashboard } from "./SectionsDashboard";
 import { useShoppingList } from "../state/shopping";
@@ -47,6 +48,7 @@ export const ProductManager: React.FC = () => {
         <Route path="/add" element={<ProductAdd />} />
         <Route path="/shopping" element={<ShoppingPage />} />
         <Route path="/shopping/history" element={<ShoppingHistoryPage />} />
+        <Route path="/intake" element={<IntakePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
 
