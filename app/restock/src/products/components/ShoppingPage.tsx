@@ -25,6 +25,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useShoppingList } from "../state/shopping";
+import { useProducts } from "../state/products";
 import {
   updateShoppingItem,
   removeShoppingItem,
@@ -40,6 +41,7 @@ export const ShoppingPage: React.FC = () => {
   const navigate = useNavigate();
   const { firebaseUser } = useAuth();
   const { list, loading, error, reload } = useShoppingList();
+  const { loadAll: reloadProducts } = useProducts();
   const [spaces, setSpaces] = React.useState<Space[]>([]);
   const [pending, setPending] = React.useState<Record<string, boolean>>({});
   const [confirmFinish, setConfirmFinish] = React.useState(false);
@@ -80,14 +82,18 @@ export const ShoppingPage: React.FC = () => {
   const toggleChecked = async (item: ShoppingItem) => {
     if (!firebaseUser) return;
     setPending((p) => ({ ...p, [item._id]: true }));
+    const wasUnchecked = !item.checked; // about to become checked
     try {
       await updateShoppingItem(
         item._id,
         { checked: !item.checked },
         () => firebaseUser.getIdToken()
       );
-      // RTDB version bump will refetch, but trigger an immediate reload too
-      await reload();
+      // Reload shopping; also reload products when checking off a linked product
+      // (backend just set that product's percentageLeft to 100%).
+      const reloads: Promise<any>[] = [reload()];
+      if (wasUnchecked && item.productId) reloads.push(reloadProducts(true));
+      await Promise.all(reloads);
     } finally {
       setPending((p) => {
         const { [item._id]: _omit, ...rest } = p;
@@ -115,7 +121,9 @@ export const ShoppingPage: React.FC = () => {
     setFinishing(true);
     try {
       await finishShopping({ markAllAsFilled: markAllFilled }, () => firebaseUser.getIdToken());
-      await reload();
+      // Refetch both shopping (now empty + archived) and products (backend just
+      // bumped their percentageLeft to 100% when markAllFilled was on).
+      await Promise.all([reload(), reloadProducts(true)]);
       setConfirmFinish(false);
     } finally {
       setFinishing(false);

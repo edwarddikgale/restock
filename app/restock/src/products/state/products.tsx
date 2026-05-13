@@ -54,7 +54,8 @@ function reducer(state: ProductsState, action: Action): ProductsState {
 
 interface ProductsContextValue extends ProductsState {
   loadBySpace: (spaceId: string) => Promise<void>;
-  loadAll: () => Promise<void>;
+  /** Pass force=true to bypass the "already loaded" guard (e.g. after a server-side bulk update). */
+  loadAll: (force?: boolean) => Promise<void>;
   add: (p: Omit<Product, "id" | "createdOn" | "lastUpdatedOn">) => Promise<Product>;
   update: (id: string, patch: Partial<Product>) => Promise<Product>;
   remove: (id: string) => Promise<void>;
@@ -78,9 +79,9 @@ export const ProductsProvider: React.FC<React.PropsWithChildren> = ({ children }
   const value = useMemo<ProductsContextValue>(() => {
     const ALL_SENTINEL = "__ALL__";
 
-    const loadAll: ProductsContextValue["loadAll"] = async () => {
-      // Skip if already in "all" mode and we have data
-      if (state.activeSpaceId === ALL_SENTINEL) return;
+    const loadAll: ProductsContextValue["loadAll"] = async (force?: boolean) => {
+      // Skip if already in "all" mode and we have data — unless caller forces.
+      if (!force && state.activeSpaceId === ALL_SENTINEL) return;
 
       dispatch({ type: "set_loading", loading: true });
       dispatch({ type: "set_error", error: null });
