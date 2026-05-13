@@ -100,6 +100,9 @@ export async function removeTenantMember(userId: string, getToken: GetToken): Pr
 export interface UserProfilePatch {
   displayName?: string;
   fullName?: string;
+  notifyEmail?: boolean;
+  notifyAtHour?: number;
+  notifyTimezone?: string;
 }
 
 export interface UserProfileFull {
@@ -108,6 +111,9 @@ export interface UserProfileFull {
   fullName: string;
   displayName?: string;
   email: string;
+  notifyEmail?: boolean;
+  notifyAtHour?: number;
+  notifyTimezone?: string;
 }
 
 export async function updateMyProfile(

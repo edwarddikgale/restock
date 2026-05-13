@@ -25,6 +25,9 @@ export interface UserProfile {
   fullName: string;
   displayName?: string;
   email: string;
+  notifyEmail?: boolean;
+  notifyAtHour?: number;
+  notifyTimezone?: string;
 }
 
 export interface Tenant {

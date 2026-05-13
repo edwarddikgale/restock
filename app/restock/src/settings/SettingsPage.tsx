@@ -28,6 +28,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Switch,
 } from "@mui/material";
 import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -122,6 +123,49 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setProfileBusy(false);
     }
+  };
+
+  // ------- Notifications -------
+  const browserTz = React.useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      return "Europe/Berlin";
+    }
+  }, []);
+  const [notifyEmail, setNotifyEmail] = React.useState(true);
+  const [notifyAtHour, setNotifyAtHour] = React.useState(16);
+  const [notifyTimezone, setNotifyTimezone] = React.useState("Europe/Berlin");
+  const [notifyBusy, setNotifyBusy] = React.useState(false);
+  const [notifySaved, setNotifySaved] = React.useState(false);
+
+  React.useEffect(() => {
+    setNotifyEmail(userProfile?.notifyEmail !== false);
+    setNotifyAtHour(typeof userProfile?.notifyAtHour === "number" ? userProfile.notifyAtHour : 16);
+    setNotifyTimezone(userProfile?.notifyTimezone || browserTz);
+  }, [userProfile?.notifyEmail, userProfile?.notifyAtHour, userProfile?.notifyTimezone, browserTz]);
+
+  const saveNotifications = async () => {
+    setNotifyBusy(true);
+    setNotifySaved(false);
+    try {
+      await updateProfile({
+        notifyEmail,
+        notifyAtHour,
+        notifyTimezone,
+      });
+      setNotifySaved(true);
+    } catch (e: any) {
+      setProfileError(e?.message || "Failed to save");
+    } finally {
+      setNotifyBusy(false);
+    }
+  };
+
+  const formatHour = (h: number) => {
+    const period = h >= 12 ? "PM" : "AM";
+    const hr12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${hr12}:00 ${period}`;
   };
 
   // ------- Tenant details + members -------
@@ -437,6 +481,88 @@ export const SettingsPage: React.FC = () => {
             disabled={profileBusy || profileDisplayName === (userProfile?.displayName || "")}
           >
             {profileBusy ? <CircularProgress size={18} color="inherit" /> : "Save"}
+          </Button>
+        </Box>
+      </Stack>
+
+      <Divider sx={{ my: 2 }} />
+
+      {/* ------- Notifications ------- */}
+      <SectionHeading>Notifications</SectionHeading>
+      {notifySaved && (
+        <Alert severity="success" sx={{ mb: 1 }}>
+          Notification preferences saved.
+        </Alert>
+      )}
+      <Stack spacing={1.5}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={notifyEmail}
+              onChange={(e) => setNotifyEmail(e.target.checked)}
+            />
+          }
+          label={
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                Daily digest email
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                A summary of items running low in your workspace.
+              </Typography>
+            </Box>
+          }
+        />
+
+        <TextField
+          select
+          label="Send at"
+          size="small"
+          value={notifyAtHour}
+          onChange={(e) => setNotifyAtHour(parseInt(e.target.value, 10))}
+          SelectProps={{ native: true }}
+          disabled={!notifyEmail}
+          fullWidth
+        >
+          {Array.from({ length: 24 }, (_, h) => (
+            <option key={h} value={h}>
+              {formatHour(h)}
+            </option>
+          ))}
+        </TextField>
+
+        <TextField
+          label="Timezone"
+          size="small"
+          value={notifyTimezone}
+          onChange={(e) => setNotifyTimezone(e.target.value)}
+          placeholder="e.g. Europe/Berlin"
+          disabled={!notifyEmail}
+          helperText={
+            notifyTimezone !== browserTz
+              ? `Your browser is in ${browserTz}. Click to use it.`
+              : "Detected from your browser."
+          }
+          fullWidth
+        />
+        {notifyTimezone !== browserTz && notifyEmail && (
+          <Button size="small" onClick={() => setNotifyTimezone(browserTz)} sx={{ alignSelf: "flex-start" }}>
+            Use {browserTz}
+          </Button>
+        )}
+
+        <Box>
+          <Button
+            onClick={saveNotifications}
+            variant="contained"
+            disabled={
+              notifyBusy ||
+              (notifyEmail === (userProfile?.notifyEmail !== false) &&
+                notifyAtHour === (userProfile?.notifyAtHour ?? 16) &&
+                notifyTimezone === (userProfile?.notifyTimezone || browserTz))
+            }
+          >
+            {notifyBusy ? <CircularProgress size={18} color="inherit" /> : "Save notifications"}
           </Button>
         </Box>
       </Stack>
