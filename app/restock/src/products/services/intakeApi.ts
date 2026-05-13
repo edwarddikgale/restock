@@ -50,6 +50,19 @@ export async function parseIntake(
   return data.items || [];
 }
 
+export async function parseIntakeImage(
+  imageDataUrl: string,
+  getToken: GetToken,
+  targetLanguage = "English"
+): Promise<MatchedItem[]> {
+  const data = await call<{ items: MatchedItem[] }>(
+    "/api/intake/parse-image",
+    { method: "POST", body: JSON.stringify({ imageDataUrl, targetLanguage }) },
+    getToken
+  );
+  return data.items || [];
+}
+
 export async function applyIntakeFill(
   productIds: string[],
   getToken: GetToken
