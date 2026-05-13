@@ -48,6 +48,7 @@ import {
   type CompanySize,
 } from "../auth/tenantApi";
 import humanDate from "../common/utils/date/humanDate";
+import { requestDigestNow } from "../auth/notificationsApi";
 import {
   fetchSentInvitations,
   createInvitation,
@@ -159,6 +160,42 @@ export const SettingsPage: React.FC = () => {
       setProfileError(e?.message || "Failed to save");
     } finally {
       setNotifyBusy(false);
+    }
+  };
+
+  // ------- Send digest now (on-demand, rate-limited) -------
+  const [digestNowBusy, setDigestNowBusy] = React.useState(false);
+  const [digestNowResult, setDigestNowResult] = React.useState<{
+    severity: "success" | "info" | "error";
+    message: string;
+  } | null>(null);
+
+  const handleSendDigestNow = async () => {
+    setDigestNowBusy(true);
+    setDigestNowResult(null);
+    try {
+      const res = await requestDigestNow(getToken);
+      if (res.sent) {
+        const remaining = res.remainingToday;
+        setDigestNowResult({
+          severity: "success",
+          message: `Sent — check your inbox (${res.itemsCount} item${
+            res.itemsCount === 1 ? "" : "s"
+          }).${typeof remaining === "number" ? ` ${remaining} sends left today.` : ""}`,
+        });
+      } else {
+        setDigestNowResult({
+          severity: "info",
+          message: res.message || "Nothing to send.",
+        });
+      }
+    } catch (e: any) {
+      setDigestNowResult({
+        severity: "error",
+        message: e?.message || "Could not send digest",
+      });
+    } finally {
+      setDigestNowBusy(false);
     }
   };
 
@@ -564,6 +601,30 @@ export const SettingsPage: React.FC = () => {
           >
             {notifyBusy ? <CircularProgress size={18} color="inherit" /> : "Save notifications"}
           </Button>
+        </Box>
+
+        {/* Send now — on-demand digest, rate-limited server-side (5 per 24h) */}
+        <Box sx={{ mt: 1.5, pt: 1.5, borderTop: "1px dashed", borderColor: "divider" }}>
+          <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+            Send me a digest now
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+            Email yourself the current running-low list — handy right before a shop.
+            Limited to 5 requests per day.
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleSendDigestNow}
+            disabled={digestNowBusy}
+          >
+            {digestNowBusy ? <CircularProgress size={16} /> : "Send digest now"}
+          </Button>
+          {digestNowResult && (
+            <Alert severity={digestNowResult.severity} sx={{ mt: 1 }}>
+              {digestNowResult.message}
+            </Alert>
+          )}
         </Box>
       </Stack>
 
