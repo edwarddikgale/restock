@@ -83,18 +83,15 @@ export const ShoppingPage: React.FC = () => {
   const toggleChecked = async (item: ShoppingItem) => {
     if (!firebaseUser) return;
     setPending((p) => ({ ...p, [item._id]: true }));
-    const wasUnchecked = !item.checked; // about to become checked
     try {
       await updateShoppingItem(
         item._id,
         { checked: !item.checked },
         () => firebaseUser.getIdToken()
       );
-      // Reload shopping; also reload products when checking off a linked product
-      // (backend just set that product's percentageLeft to 100%).
-      const reloads: Promise<any>[] = [reload()];
-      if (wasUnchecked && item.productId) reloads.push(reloadProducts(true));
-      await Promise.all(reloads);
+      // Checking an item no longer touches the linked product — that happens
+      // at Finish, so we only need to refresh the shopping list itself.
+      await reload();
     } finally {
       setPending((p) => {
         const { [item._id]: _omit, ...rest } = p;
@@ -361,18 +358,16 @@ export const ShoppingPage: React.FC = () => {
                   Mark items as filled
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Sets every linked product to 100% stocked. Already-checked items
-                  were filled when you ticked them.
+                  Sets every linked product on this list to 100% stocked.
                 </Typography>
               </Box>
             }
           />
 
-          {doneCount < total && !markAllFilled && (
+          {!markAllFilled && (
             <Alert severity="info" sx={{ mt: 1.5 }}>
-              {total - doneCount} {total - doneCount === 1 ? "item is" : "items are"} still
-              unchecked. Their stock levels won't change — turn the toggle on if you want them
-              all marked as filled too.
+              Stock levels won't change — turn the toggle on if you want every linked product
+              marked as filled.
             </Alert>
           )}
         </DialogContent>
