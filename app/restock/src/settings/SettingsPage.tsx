@@ -619,6 +619,8 @@ export const SettingsPage: React.FC = () => {
           )}
         </Box>
 
+        <Box sx={{ mt: 1.5 }} />
+
         <TextField
           label="Timezone"
           size="small"
