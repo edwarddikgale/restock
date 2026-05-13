@@ -63,13 +63,28 @@ export async function parseIntakeImage(
   return data.items || [];
 }
 
+export interface IntakeNewItem {
+  name: string;
+  spaceId: string;
+  synonym?: string;
+  category?: string;
+  measureType?: string;
+  defaultQuantity?: number;
+}
+
+export interface ApplyFillResult {
+  filledCount: number;
+  createdCount: number;
+  mergedCount: number;
+}
+
 export async function applyIntakeFill(
-  productIds: string[],
+  payload: { productIds?: string[]; newItems?: IntakeNewItem[] },
   getToken: GetToken
-): Promise<{ filledCount: number }> {
-  return call<{ filledCount: number }>(
+): Promise<ApplyFillResult> {
+  return call<ApplyFillResult>(
     "/api/intake/apply-fill",
-    { method: "POST", body: JSON.stringify({ productIds }) },
+    { method: "POST", body: JSON.stringify(payload) },
     getToken
   );
 }

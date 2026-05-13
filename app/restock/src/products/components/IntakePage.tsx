@@ -37,6 +37,7 @@ import {
 } from "../services/intakeApi";
 import { useProducts } from "../state/products";
 import { useShoppingList } from "../state/shopping";
+import { fetchMySpaces, type Space } from "../services/spacesApi";
 
 type SourceTab = "text" | "voice" | "receipt";
 type Destination = "fill" | "shopping";
@@ -114,6 +115,20 @@ export const IntakePage: React.FC = () => {
   // Receipt image state
   const [imageDataUrl, setImageDataUrl] = React.useState<string | null>(null);
   const [imageBusy, setImageBusy] = React.useState(false);
+
+  // Sections — used as the "where do new (unmatched) items go" picker
+  const [spaces, setSpaces] = React.useState<Space[]>([]);
+  const [newItemSpaceId, setNewItemSpaceId] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (!firebaseUser) return;
+    fetchMySpaces(() => firebaseUser.getIdToken())
+      .then((loaded) => {
+        setSpaces(loaded);
+        if (loaded.length > 0) setNewItemSpaceId(loaded[0]._id);
+      })
+      .catch(() => setSpaces([]));
+  }, [firebaseUser]);
 
   const [parsing, setParsing] = React.useState(false);
   const [parseError, setParseError] = React.useState<string | null>(null);
@@ -222,8 +237,26 @@ export const IntakePage: React.FC = () => {
         const productIds = picked
           .map((i) => i.chosenProductId)
           .filter((id): id is string => !!id);
-        const res = await applyIntakeFill(productIds, () => firebaseUser.getIdToken());
-        setApplyResult(`Marked ${res.filledCount} ${res.filledCount === 1 ? "product" : "products"} as filled.`);
+        // Unmatched picked items become brand-new products at 100% in the
+        // chosen section.
+        const newItems = picked
+          .filter((i) => !i.chosenProductId)
+          .map((i) => ({
+            name: i.name,
+            synonym: i.originalName,
+            measureType: i.measure || "Units",
+            defaultQuantity: typeof i.quantity === "number" && i.quantity > 0 ? i.quantity : 1,
+            spaceId: newItemSpaceId,
+          }));
+        const res = await applyIntakeFill(
+          { productIds, newItems },
+          () => firebaseUser.getIdToken()
+        );
+        const parts: string[] = [];
+        if (res.filledCount) parts.push(`${res.filledCount} refilled`);
+        if (res.createdCount) parts.push(`${res.createdCount} created at 100%`);
+        if (res.mergedCount) parts.push(`${res.mergedCount} merged into existing`);
+        setApplyResult(parts.length ? parts.join(" · ") : "Nothing to do.");
         await reloadProducts(true);
       } else {
         const payload = picked.map((i) =>
@@ -255,8 +288,10 @@ export const IntakePage: React.FC = () => {
   const matchedCount = items?.filter((i) => i.selected && i.chosenProductId).length ?? 0;
   const unmatchedCount = items?.filter((i) => i.selected && !i.chosenProductId).length ?? 0;
 
-  // The "fill" action can only act on matched items; warn if user has unmatched selected.
-  const fillUnavailable = destination === "fill" && matchedCount === 0;
+  // Fill action: matched items refill stock, unmatched ones get created at 100%
+  // in the chosen section. So it's available whenever ANY items are selected.
+  const fillUnavailable =
+    destination === "fill" && unmatchedCount > 0 && !newItemSpaceId;
 
   return (
     <Box sx={{ pb: 9 }}>
@@ -513,11 +548,34 @@ export const IntakePage: React.FC = () => {
             </ToggleButtonGroup>
 
             {destination === "fill" && unmatchedCount > 0 && (
-              <Alert severity="info">
-                {unmatchedCount} unmatched {unmatchedCount === 1 ? "item is" : "items are"} selected
-                but can't refill stock (no linked product). They'll be skipped.
-                Switch to "Add to shopping" if you'd rather add them as loose items.
-              </Alert>
+              <>
+                <Alert severity="info">
+                  {unmatchedCount} unmatched {unmatchedCount === 1 ? "item" : "items"} will be{" "}
+                  <strong>created as new products at 100%</strong> in the section below.
+                </Alert>
+                {spaces.length > 0 ? (
+                  <TextField
+                    select
+                    label="Section for new items"
+                    size="small"
+                    value={newItemSpaceId}
+                    onChange={(e) => setNewItemSpaceId(e.target.value)}
+                    SelectProps={{ native: true }}
+                    fullWidth
+                  >
+                    {spaces.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </TextField>
+                ) : (
+                  <Alert severity="warning">
+                    No sections found in your workspace yet. Create one in Settings before
+                    creating new products.
+                  </Alert>
+                )}
+              </>
             )}
 
             <Button
