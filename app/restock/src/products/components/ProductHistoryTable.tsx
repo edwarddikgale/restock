@@ -14,10 +14,12 @@ import {
   Stack,
 } from "@mui/material";
 import { useAuth } from "../../auth/AuthContext";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import {
   fetchProductHistory,
   type ProductHistoryEntry,
   type HistoryChange,
+  type ProductHistorySource,
 } from "../services/historyApi";
 import humanDate from "../../common/utils/date/humanDate";
 
@@ -43,6 +45,58 @@ function fieldLabel(field: string): string {
     spaceId: "Section",
   };
   return map[field] || field;
+}
+
+const SOURCE_LABELS: Record<ProductHistorySource, string> = {
+  human: "manual",
+  receipt: "receipt",
+  voice: "voice",
+  text: "list",
+  shopping: "shopping",
+};
+
+const SOURCE_COLORS: Record<
+  ProductHistorySource,
+  "default" | "info" | "success" | "warning"
+> = {
+  human: "default",
+  receipt: "info",
+  voice: "info",
+  text: "info",
+  shopping: "success",
+};
+
+function SourceChip({ entry }: { entry: ProductHistoryEntry }) {
+  if (!entry.source) return null;
+  const label = SOURCE_LABELS[entry.source] || entry.source;
+  const color = SOURCE_COLORS[entry.source] || "default";
+  const full = entry.store ? `${label} · ${entry.store}` : label;
+  return (
+    <Chip
+      size="small"
+      icon={entry.store ? <StorefrontOutlinedIcon sx={{ fontSize: 14 }} /> : undefined}
+      label={full}
+      color={color}
+      variant="outlined"
+      sx={{ fontSize: "0.65rem", height: 20, mt: 0.25 }}
+    />
+  );
+}
+
+function MetaLine({ entry }: { entry: ProductHistoryEntry }) {
+  const bits: string[] = [];
+  if (typeof entry.quantity === "number" && entry.quantity > 0) {
+    bits.push(`qty ${entry.quantity}`);
+  }
+  if (typeof entry.price === "number" && entry.price > 0) {
+    bits.push(`@ ${entry.price.toFixed(2)}`);
+  }
+  if (bits.length === 0) return null;
+  return (
+    <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.2 }}>
+      {bits.join(" ")}
+    </Typography>
+  );
 }
 
 function ChangeCell({ change }: { change: HistoryChange }) {
@@ -159,6 +213,8 @@ export const ProductHistoryTable: React.FC<Props> = ({ productId }) => {
                   ) : (
                     e.changes.map((c, i) => <ChangeCell key={i} change={c} />)
                   )}
+                  <MetaLine entry={e} />
+                  <SourceChip entry={e} />
                 </TableCell>
                 <TableCell sx={{ verticalAlign: "top" }}>
                   <Typography variant="caption">{e.userName || "—"}</Typography>

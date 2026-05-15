@@ -6,6 +6,8 @@ export interface HistoryChange {
   to: any;
 }
 
+export type ProductHistorySource = "human" | "receipt" | "voice" | "text" | "shopping";
+
 export interface ProductHistoryEntry {
   _id: string;
   productId: string;
@@ -15,6 +17,10 @@ export interface ProductHistoryEntry {
   userId: string;
   userName: string;
   changes: HistoryChange[];
+  source?: ProductHistorySource;
+  store?: string;
+  quantity?: number;
+  price?: number;
   createdAt: string;
 }
 

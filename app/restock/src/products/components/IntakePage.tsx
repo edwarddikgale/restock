@@ -26,6 +26,9 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import {
@@ -46,6 +49,8 @@ interface SelectedItem extends MatchedItem {
   selected: boolean;
   // The productId the user wants to apply this match to; null means treat as freeText/skip on fill.
   chosenProductId: string | null;
+  // User-editable quantity (defaults to AI-extracted quantity, falling back to 1)
+  editedQuantity: number;
 }
 
 const PLACEHOLDERS: Record<SourceTab, string> = {
@@ -133,6 +138,7 @@ export const IntakePage: React.FC = () => {
   const [parsing, setParsing] = React.useState(false);
   const [parseError, setParseError] = React.useState<string | null>(null);
   const [items, setItems] = React.useState<SelectedItem[] | null>(null);
+  const [store, setStore] = React.useState<string | null>(null);
 
   const [destination, setDestination] = React.useState<Destination>("fill");
   const [applying, setApplying] = React.useState(false);
@@ -196,7 +202,7 @@ export const IntakePage: React.FC = () => {
     setParseError(null);
     setApplyResult(null);
     try {
-      let parsed: MatchedItem[];
+      let parsed: { store: string | null; items: MatchedItem[] };
       if (tab === "receipt" && imageDataUrl) {
         // Receipt photo path — OpenAI Vision does OCR + parsing in one call
         parsed = await parseIntakeImage(imageDataUrl, () => firebaseUser.getIdToken());
@@ -208,14 +214,17 @@ export const IntakePage: React.FC = () => {
         }
         parsed = await parseIntake(text, () => firebaseUser.getIdToken());
       }
+      setStore(parsed.store);
       setItems(
-        parsed.map<SelectedItem>((p) => ({
+        parsed.items.map<SelectedItem>((p) => ({
           ...p,
           selected: true,
           chosenProductId: p.bestMatchId,
+          editedQuantity:
+            typeof p.quantity === "number" && p.quantity > 0 ? p.quantity : 1,
         }))
       );
-      if (parsed.length === 0) {
+      if (parsed.items.length === 0) {
         setParseError("No items detected. Try adding more detail or a different format.");
       }
     } catch (e: any) {
@@ -234,9 +243,14 @@ export const IntakePage: React.FC = () => {
     setApplyResult(null);
     try {
       if (destination === "fill") {
-        const productIds = picked
-          .map((i) => i.chosenProductId)
-          .filter((id): id is string => !!id);
+        const fillItems = picked
+          .filter((i) => !!i.chosenProductId)
+          .map((i) => ({
+            productId: i.chosenProductId as string,
+            quantity: i.editedQuantity,
+            price: typeof i.price === "number" ? i.price : undefined,
+            measure: i.measure ?? undefined,
+          }));
         // Unmatched picked items become brand-new products at 100% in the
         // chosen section.
         const newItems = picked
@@ -245,11 +259,19 @@ export const IntakePage: React.FC = () => {
             name: i.name,
             synonym: i.originalName,
             measureType: i.measure || "Units",
-            defaultQuantity: typeof i.quantity === "number" && i.quantity > 0 ? i.quantity : 1,
+            defaultQuantity: i.editedQuantity > 0 ? i.editedQuantity : 1,
             spaceId: newItemSpaceId,
+            quantity: i.editedQuantity,
+            price: typeof i.price === "number" ? i.price : undefined,
+            measure: i.measure ?? undefined,
           }));
         const res = await applyIntakeFill(
-          { productIds, newItems },
+          {
+            store: store || undefined,
+            source: tab === "voice" ? "voice" : tab === "text" ? "text" : "receipt",
+            items: fillItems,
+            newItems,
+          },
           () => firebaseUser.getIdToken()
         );
         const parts: string[] = [];
@@ -261,14 +283,15 @@ export const IntakePage: React.FC = () => {
       } else {
         const payload = picked.map((i) =>
           i.chosenProductId
-            ? { productId: i.chosenProductId, qty: i.quantity ?? undefined }
-            : { freeText: i.name, qty: i.quantity ?? undefined }
+            ? { productId: i.chosenProductId, qty: i.editedQuantity }
+            : { freeText: i.name, qty: i.editedQuantity }
         );
         const res = await applyIntakeShopping(payload, () => firebaseUser.getIdToken());
         setApplyResult(`Added ${res.addedCount} ${res.addedCount === 1 ? "item" : "items"} to your shopping list.`);
         await reloadShopping();
       }
       setItems(null);
+      setStore(null);
       setRawText("");
       setImageDataUrl(null);
     } catch (e: any) {
@@ -282,6 +305,17 @@ export const IntakePage: React.FC = () => {
     setItems((prev) =>
       prev
         ? prev.map((it, i) => (i === idx ? { ...it, selected: !it.selected } : it))
+        : prev
+    );
+
+  const adjustQuantity = (idx: number, delta: number) =>
+    setItems((prev) =>
+      prev
+        ? prev.map((it, i) =>
+            i === idx
+              ? { ...it, editedQuantity: Math.max(1, Math.round((it.editedQuantity + delta) * 100) / 100) }
+              : it
+          )
         : prev
     );
 
@@ -445,6 +479,7 @@ export const IntakePage: React.FC = () => {
             <Button
               onClick={() => {
                 setItems(null);
+                setStore(null);
                 setApplyResult(null);
                 setImageDataUrl(null);
               }}
@@ -469,9 +504,20 @@ export const IntakePage: React.FC = () => {
           <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
             Detected items
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-            {matchedCount} matched · {unmatchedCount} unmatched
-          </Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1, flexWrap: "wrap" }}>
+            <Typography variant="caption" color="text.secondary">
+              {matchedCount} matched · {unmatchedCount} unmatched
+            </Typography>
+            {store && (
+              <Chip
+                size="small"
+                icon={<StorefrontOutlinedIcon sx={{ fontSize: 14 }} />}
+                label={store}
+                variant="outlined"
+                sx={{ fontSize: "0.7rem", height: 22 }}
+              />
+            )}
+          </Stack>
 
           <Paper variant="outlined" sx={{ borderRadius: 2 }}>
             {items.map((it, idx) => {
@@ -503,9 +549,9 @@ export const IntakePage: React.FC = () => {
                       ) : (
                         <HelpOutlineIcon fontSize="small" color="warning" />
                       )}
-                      {it.quantity && (
+                      {typeof it.price === "number" && it.price > 0 && (
                         <Chip
-                          label={`${it.quantity}${it.measure ? " " + it.measure : ""}`}
+                          label={it.price.toFixed(2)}
                           size="small"
                           variant="outlined"
                           sx={{ fontSize: "0.65rem", height: 18 }}
@@ -529,6 +575,41 @@ export const IntakePage: React.FC = () => {
                       </Typography>
                     )}
                   </Box>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={0}
+                    sx={{ ml: 0.5, mr: 0.25 }}
+                  >
+                    <IconButton
+                      size="small"
+                      onClick={() => adjustQuantity(idx, -1)}
+                      disabled={it.editedQuantity <= 1}
+                      sx={{ p: 0.25 }}
+                      aria-label="Decrease quantity"
+                    >
+                      <RemoveIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                    <Typography
+                      variant="caption"
+                      sx={{ minWidth: 32, textAlign: "center", fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {it.editedQuantity}
+                      {it.measure ? (
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.25 }}>
+                          {it.measure.slice(0, 1).toLowerCase()}
+                        </Typography>
+                      ) : null}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => adjustQuantity(idx, 1)}
+                      sx={{ p: 0.25 }}
+                      aria-label="Increase quantity"
+                    >
+                      <AddIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Stack>
                 </Box>
               );
             })}

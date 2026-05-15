@@ -14,9 +14,17 @@ export interface MatchedItem {
   originalLanguage?: string | null;
   quantity?: number | null;
   measure?: string | null;
+  price?: number | null;
   candidates: MatchCandidate[];
   bestMatchId: string | null;
 }
+
+export interface ParseIntakeResult {
+  store: string | null;
+  items: MatchedItem[];
+}
+
+export type IntakeSource = "receipt" | "voice" | "text" | "human";
 
 type GetToken = () => Promise<string | null>;
 
@@ -41,26 +49,26 @@ export async function parseIntake(
   rawText: string,
   getToken: GetToken,
   targetLanguage = "English"
-): Promise<MatchedItem[]> {
-  const data = await call<{ items: MatchedItem[] }>(
+): Promise<ParseIntakeResult> {
+  const data = await call<{ store?: string | null; items: MatchedItem[] }>(
     "/api/intake/parse",
     { method: "POST", body: JSON.stringify({ rawText, targetLanguage }) },
     getToken
   );
-  return data.items || [];
+  return { store: data.store ?? null, items: data.items || [] };
 }
 
 export async function parseIntakeImage(
   imageDataUrl: string,
   getToken: GetToken,
   targetLanguage = "English"
-): Promise<MatchedItem[]> {
-  const data = await call<{ items: MatchedItem[] }>(
+): Promise<ParseIntakeResult> {
+  const data = await call<{ store?: string | null; items: MatchedItem[] }>(
     "/api/intake/parse-image",
     { method: "POST", body: JSON.stringify({ imageDataUrl, targetLanguage }) },
     getToken
   );
-  return data.items || [];
+  return { store: data.store ?? null, items: data.items || [] };
 }
 
 export interface IntakeNewItem {
@@ -70,6 +78,16 @@ export interface IntakeNewItem {
   category?: string;
   measureType?: string;
   defaultQuantity?: number;
+  quantity?: number;
+  price?: number;
+  measure?: string | null;
+}
+
+export interface IntakeFillItem {
+  productId: string;
+  quantity?: number;
+  price?: number;
+  measure?: string | null;
 }
 
 export interface ApplyFillResult {
@@ -79,7 +97,12 @@ export interface ApplyFillResult {
 }
 
 export async function applyIntakeFill(
-  payload: { productIds?: string[]; newItems?: IntakeNewItem[] },
+  payload: {
+    store?: string;
+    source?: IntakeSource;
+    items?: IntakeFillItem[];
+    newItems?: IntakeNewItem[];
+  },
   getToken: GetToken
 ): Promise<ApplyFillResult> {
   return call<ApplyFillResult>(
