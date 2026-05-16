@@ -29,8 +29,8 @@ import {
   DialogContentText,
   DialogActions,
   Switch,
-  ToggleButton,
-  ToggleButtonGroup,
+  ButtonBase,
+  Tooltip,
 } from "@mui/material";
 import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -78,6 +78,172 @@ const SectionHeading: React.FC<{ children: React.ReactNode }> = ({ children }) =
     {children}
   </Typography>
 );
+
+/**
+ * Weekday picker that renders the 7 days of the week as round, tappable
+ * pills with a one-letter label, plus a row of preset shortcuts
+ * (Weekdays / Weekends / Every day). Values are 0..6 where 0 = Sunday,
+ * matching the existing storage convention on UserProfile.
+ */
+const WEEKDAYS: { value: number; letter: string; label: string }[] = [
+  { value: 1, letter: "M", label: "Monday" },
+  { value: 2, letter: "T", label: "Tuesday" },
+  { value: 3, letter: "W", label: "Wednesday" },
+  { value: 4, letter: "T", label: "Thursday" },
+  { value: 5, letter: "F", label: "Friday" },
+  { value: 6, letter: "S", label: "Saturday" },
+  { value: 0, letter: "S", label: "Sunday" },
+];
+
+const WEEKDAYS_SET = [1, 2, 3, 4, 5];
+const WEEKEND_SET = [0, 6];
+const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
+
+function sameSet(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort((x, y) => x - y).join(",");
+  const sb = [...b].sort((x, y) => x - y).join(",");
+  return sa === sb;
+}
+
+function summarizeDays(days: number[]): string {
+  if (days.length === 0) return "No days selected";
+  if (sameSet(days, EVERY_DAY)) return "Every day";
+  if (sameSet(days, WEEKDAYS_SET)) return "Weekdays (Mon–Fri)";
+  if (sameSet(days, WEEKEND_SET)) return "Weekends (Sat–Sun)";
+  const ordered = [...days].sort((a, b) => {
+    // Display ordering: Mon..Sun
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    return order.indexOf(a) - order.indexOf(b);
+  });
+  const labels = ordered.map(
+    (d) => WEEKDAYS.find((w) => w.value === d)?.label.slice(0, 3) || ""
+  );
+  return labels.join(", ");
+}
+
+const WeekdayPicker: React.FC<{
+  value: number[];
+  onChange: (next: number[]) => void;
+  disabled?: boolean;
+}> = ({ value, onChange, disabled }) => {
+  const toggle = (day: number) => {
+    if (disabled) return;
+    onChange(
+      value.includes(day) ? value.filter((d) => d !== day) : [...value, day]
+    );
+  };
+  const setPreset = (next: number[]) => {
+    if (disabled) return;
+    onChange(next);
+  };
+
+  const presets = [
+    { label: "Weekdays", set: WEEKDAYS_SET },
+    { label: "Weekends", set: WEEKEND_SET },
+    { label: "Every day", set: EVERY_DAY },
+  ];
+
+  return (
+    <Box>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="baseline"
+        sx={{ mb: 0.75 }}
+      >
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+          Days to send
+        </Typography>
+        <Typography
+          variant="caption"
+          color={disabled ? "text.disabled" : "text.primary"}
+          sx={{ fontWeight: 500 }}
+        >
+          {summarizeDays(value)}
+        </Typography>
+      </Stack>
+
+      <Stack
+        direction="row"
+        spacing={0.75}
+        sx={{ justifyContent: "space-between", mb: 1 }}
+      >
+        {WEEKDAYS.map((d) => {
+          const selected = value.includes(d.value);
+          return (
+            <Tooltip key={d.value} title={d.label} arrow disableInteractive>
+              <ButtonBase
+                disabled={disabled}
+                onClick={() => toggle(d.value)}
+                aria-label={d.label}
+                aria-pressed={selected}
+                sx={(theme) => ({
+                  flex: 1,
+                  maxWidth: 44,
+                  aspectRatio: "1 / 1",
+                  borderRadius: "50%",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                  cursor: disabled ? "default" : "pointer",
+                  transition: theme.transitions.create(
+                    ["background-color", "color", "border-color", "transform", "box-shadow"],
+                    { duration: 140 }
+                  ),
+                  border: "1.5px solid",
+                  borderColor: selected ? "primary.main" : "divider",
+                  bgcolor: selected ? "primary.main" : "transparent",
+                  color: selected
+                    ? "primary.contrastText"
+                    : disabled
+                    ? "text.disabled"
+                    : "text.primary",
+                  opacity: disabled ? 0.5 : 1,
+                  boxShadow: selected ? 2 : 0,
+                  "&:hover": disabled
+                    ? {}
+                    : {
+                        bgcolor: selected ? "primary.dark" : "action.hover",
+                        transform: "translateY(-1px)",
+                      },
+                  "&:active": disabled ? {} : { transform: "translateY(0)" },
+                  "&:focus-visible": {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: 2,
+                  },
+                })}
+              >
+                {d.letter}
+              </ButtonBase>
+            </Tooltip>
+          );
+        })}
+      </Stack>
+
+      <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap", rowGap: 0.75 }}>
+        {presets.map((p) => {
+          const active = sameSet(value, p.set);
+          return (
+            <Chip
+              key={p.label}
+              label={p.label}
+              size="small"
+              variant={active ? "filled" : "outlined"}
+              color={active ? "primary" : "default"}
+              onClick={() => setPreset(p.set)}
+              disabled={disabled}
+              sx={{ fontSize: "0.72rem", height: 24, cursor: disabled ? "default" : "pointer" }}
+            />
+          );
+        })}
+      </Stack>
+    </Box>
+  );
+};
 
 const COMPANY_SIZES: CompanySize[] = ["1-10", "11-50", "51-200", "201-1000", "1000+"];
 
@@ -617,41 +783,17 @@ export const SettingsPage: React.FC = () => {
           ))}
         </TextField>
 
-        {/* Weekday picker — multi-select chip row */}
-        <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-            Days to send
+        {/* Weekday picker — circular day pills + preset shortcuts */}
+        <WeekdayPicker
+          value={notifyDays}
+          onChange={setNotifyDays}
+          disabled={!notifyEmail}
+        />
+        {notifyDays.length === 0 && notifyEmail && (
+          <Typography variant="caption" color="warning.main" sx={{ display: "block", mt: -0.5 }}>
+            No days selected — auto digest won't send. Use "Send digest now" or pick at least one day.
           </Typography>
-          <ToggleButtonGroup
-            value={notifyDays}
-            onChange={(_, v: number[]) => v && setNotifyDays(v)}
-            size="small"
-            disabled={!notifyEmail}
-            sx={{
-              flexWrap: "wrap",
-              "& .MuiToggleButton-root": {
-                px: 1.25,
-                py: 0.5,
-                fontSize: "0.78rem",
-                minWidth: 44,
-                borderRadius: 1,
-              },
-            }}
-          >
-            <ToggleButton value={1}>Mon</ToggleButton>
-            <ToggleButton value={2}>Tue</ToggleButton>
-            <ToggleButton value={3}>Wed</ToggleButton>
-            <ToggleButton value={4}>Thu</ToggleButton>
-            <ToggleButton value={5}>Fri</ToggleButton>
-            <ToggleButton value={6}>Sat</ToggleButton>
-            <ToggleButton value={0}>Sun</ToggleButton>
-          </ToggleButtonGroup>
-          {notifyDays.length === 0 && notifyEmail && (
-            <Typography variant="caption" color="warning.main" sx={{ display: "block", mt: 0.5 }}>
-              No days selected — auto digest won't send. Use "Send digest now" or pick at least one day.
-            </Typography>
-          )}
-        </Box>
+        )}
 
         <Box sx={{ mt: 1.5 }} />
 
