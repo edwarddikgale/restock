@@ -25,6 +25,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
+import PhotoLibraryOutlinedIcon from "@mui/icons-material/PhotoLibraryOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import AddIcon from "@mui/icons-material/Add";
@@ -117,8 +118,8 @@ export const IntakePage: React.FC = () => {
   const [recording, setRecording] = React.useState(false);
   const recognitionRef = React.useRef<any>(null);
 
-  // Receipt image state
-  const [imageDataUrl, setImageDataUrl] = React.useState<string | null>(null);
+  // Receipt image state — supports multiple receipts in one go
+  const [imageDataUrls, setImageDataUrls] = React.useState<string[]>([]);
   const [imageBusy, setImageBusy] = React.useState(false);
 
   // Sections — used as the "where do new (unmatched) items go" picker
@@ -138,7 +139,10 @@ export const IntakePage: React.FC = () => {
   const [parsing, setParsing] = React.useState(false);
   const [parseError, setParseError] = React.useState<string | null>(null);
   const [items, setItems] = React.useState<SelectedItem[] | null>(null);
-  const [store, setStore] = React.useState<string | null>(null);
+  /** Distinct stores detected across all parsed receipts (case-insensitive). */
+  const [stores, setStores] = React.useState<string[]>([]);
+  /** Which detected store the user wants to attribute the fill to. */
+  const [selectedStore, setSelectedStore] = React.useState<string | null>(null);
 
   const [destination, setDestination] = React.useState<Destination>("fill");
   const [applying, setApplying] = React.useState(false);
@@ -181,19 +185,23 @@ export const IntakePage: React.FC = () => {
   React.useEffect(() => () => recognitionRef.current?.stop(), []);
 
   // -------- image upload --------
-  const handleImagePick = async (file: File | null) => {
-    if (!file) return;
+  const handleImagesPick = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     setImageBusy(true);
     setParseError(null);
     try {
-      const dataUrl = await fileToResizedDataUrl(file);
-      setImageDataUrl(dataUrl);
+      const list = Array.from(files);
+      const dataUrls = await Promise.all(list.map((f) => fileToResizedDataUrl(f)));
+      setImageDataUrls((prev) => [...prev, ...dataUrls]);
     } catch (e: any) {
       setParseError(e?.message || "Could not read image");
     } finally {
       setImageBusy(false);
     }
   };
+
+  const removeImage = (idx: number) =>
+    setImageDataUrls((prev) => prev.filter((_, i) => i !== idx));
 
   // -------- parse --------
   const handleParse = async () => {
@@ -202,21 +210,40 @@ export const IntakePage: React.FC = () => {
     setParseError(null);
     setApplyResult(null);
     try {
-      let parsed: { store: string | null; items: MatchedItem[] };
-      if (tab === "receipt" && imageDataUrl) {
-        // Receipt photo path — OpenAI Vision does OCR + parsing in one call
-        parsed = await parseIntakeImage(imageDataUrl, () => firebaseUser.getIdToken());
+      const aggregated: MatchedItem[] = [];
+      const storesSeen: string[] = [];
+      const addStore = (s: string | null) => {
+        const trimmed = (s || "").trim();
+        if (!trimmed) return;
+        const exists = storesSeen.some(
+          (x) => x.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (!exists) storesSeen.push(trimmed);
+      };
+
+      if (tab === "receipt" && imageDataUrls.length > 0) {
+        // Parse each receipt independently and concatenate results. Receipts
+        // are processed sequentially so a single failure surfaces clearly.
+        for (const url of imageDataUrls) {
+          const r = await parseIntakeImage(url, () => firebaseUser.getIdToken());
+          addStore(r.store);
+          aggregated.push(...r.items);
+        }
       } else {
         const text = rawText.trim();
         if (!text) {
           setParsing(false);
           return;
         }
-        parsed = await parseIntake(text, () => firebaseUser.getIdToken());
+        const r = await parseIntake(text, () => firebaseUser.getIdToken());
+        addStore(r.store);
+        aggregated.push(...r.items);
       }
-      setStore(parsed.store);
+
+      setStores(storesSeen);
+      setSelectedStore(storesSeen[0] || null);
       setItems(
-        parsed.items.map<SelectedItem>((p) => ({
+        aggregated.map<SelectedItem>((p) => ({
           ...p,
           selected: true,
           chosenProductId: p.bestMatchId,
@@ -224,7 +251,7 @@ export const IntakePage: React.FC = () => {
             typeof p.quantity === "number" && p.quantity > 0 ? p.quantity : 1,
         }))
       );
-      if (parsed.items.length === 0) {
+      if (aggregated.length === 0) {
         setParseError("No items detected. Try adding more detail or a different format.");
       }
     } catch (e: any) {
@@ -267,7 +294,7 @@ export const IntakePage: React.FC = () => {
           }));
         const res = await applyIntakeFill(
           {
-            store: store || undefined,
+            store: selectedStore || undefined,
             source: tab === "voice" ? "voice" : tab === "text" ? "text" : "receipt",
             items: fillItems,
             newItems,
@@ -291,9 +318,10 @@ export const IntakePage: React.FC = () => {
         await reloadShopping();
       }
       setItems(null);
-      setStore(null);
+      setStores([]);
+      setSelectedStore(null);
       setRawText("");
-      setImageDataUrl(null);
+      setImageDataUrls([]);
     } catch (e: any) {
       setApplyResult(e?.message || "Failed to apply");
     } finally {
@@ -362,8 +390,10 @@ export const IntakePage: React.FC = () => {
       <Stack spacing={1}>
         {tab === "receipt" && (
           <>
-            {/* Photo picker — uses native camera on mobile via capture=environment */}
-            {!imageDataUrl ? (
+            {/* Two pickers side-by-side: "Take photo" uses the native camera
+                (capture=environment), "Upload" opens the gallery / file
+                picker and accepts multiple files. Both append to the queue. */}
+            <Stack direction="row" spacing={1}>
               <Button
                 component="label"
                 variant="outlined"
@@ -372,51 +402,88 @@ export const IntakePage: React.FC = () => {
                 fullWidth
                 sx={{ py: 1.25 }}
               >
-                {imageBusy ? "Processing…" : "Take or upload receipt photo"}
+                Take photo
                 <input
                   hidden
                   type="file"
                   accept="image/*"
                   capture="environment"
                   onChange={(e) => {
-                    handleImagePick(e.target.files?.[0] || null);
-                    // Reset so the same file can be re-selected if needed
+                    handleImagesPick(e.target.files);
                     e.target.value = "";
                   }}
                 />
               </Button>
-            ) : (
+              <Button
+                component="label"
+                variant="outlined"
+                startIcon={imageBusy ? <CircularProgress size={16} /> : <PhotoLibraryOutlinedIcon />}
+                disabled={imageBusy}
+                fullWidth
+                sx={{ py: 1.25 }}
+              >
+                Upload
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    handleImagesPick(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </Button>
+            </Stack>
+
+            {imageDataUrls.length > 0 && (
               <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
-                <Stack direction="row" spacing={1} alignItems="flex-start">
-                  <Box
-                    component="img"
-                    src={imageDataUrl}
-                    alt="Receipt preview"
-                    sx={{
-                      width: 80,
-                      height: 100,
-                      objectFit: "cover",
-                      borderRadius: 1,
-                      flexShrink: 0,
-                      bgcolor: "action.hover",
-                    }}
-                  />
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      Receipt photo ready
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Tap "Find items" to extract.
-                    </Typography>
-                  </Box>
-                  <IconButton
-                    size="small"
-                    onClick={() => setImageDataUrl(null)}
-                    aria-label="Remove image"
-                  >
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ overflowX: "auto", pb: 0.5 }}
+                >
+                  {imageDataUrls.map((url, i) => (
+                    <Box
+                      key={i}
+                      sx={{ position: "relative", flexShrink: 0 }}
+                    >
+                      <Box
+                        component="img"
+                        src={url}
+                        alt={`Receipt ${i + 1}`}
+                        sx={{
+                          width: 72,
+                          height: 96,
+                          objectFit: "cover",
+                          borderRadius: 1,
+                          bgcolor: "action.hover",
+                          display: "block",
+                        }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => removeImage(i)}
+                        aria-label={`Remove receipt ${i + 1}`}
+                        sx={{
+                          position: "absolute",
+                          top: -6,
+                          right: -6,
+                          bgcolor: "background.paper",
+                          border: "1px solid",
+                          borderColor: "divider",
+                          p: 0.25,
+                          "&:hover": { bgcolor: "background.paper" },
+                        }}
+                      >
+                        <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Box>
+                  ))}
                 </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                  {imageDataUrls.length} {imageDataUrls.length === 1 ? "receipt" : "receipts"} ready · tap "Find items" to extract.
+                </Typography>
               </Paper>
             )}
 
@@ -438,8 +505,8 @@ export const IntakePage: React.FC = () => {
           onChange={(e) => setRawText(e.target.value)}
           placeholder={PLACEHOLDERS[tab]}
           fullWidth
-          // Don't make the user type if they've already attached a photo
-          disabled={tab === "receipt" && !!imageDataUrl}
+          // Don't make the user type if they've already attached photos
+          disabled={tab === "receipt" && imageDataUrls.length > 0}
         />
 
         {tab === "voice" && (
@@ -468,20 +535,27 @@ export const IntakePage: React.FC = () => {
             disabled={
               parsing ||
               imageBusy ||
-              (tab === "receipt" && imageDataUrl
+              (tab === "receipt" && imageDataUrls.length > 0
                 ? false
                 : !rawText.trim())
             }
           >
-            {parsing ? <CircularProgress size={18} color="inherit" /> : "Find items"}
+            {parsing ? (
+              <CircularProgress size={18} color="inherit" />
+            ) : tab === "receipt" && imageDataUrls.length > 1 ? (
+              `Find items in ${imageDataUrls.length} receipts`
+            ) : (
+              "Find items"
+            )}
           </Button>
-          {(items || imageDataUrl) && (
+          {(items || imageDataUrls.length > 0) && (
             <Button
               onClick={() => {
                 setItems(null);
-                setStore(null);
+                setStores([]);
+                setSelectedStore(null);
                 setApplyResult(null);
-                setImageDataUrl(null);
+                setImageDataUrls([]);
               }}
               variant="text"
             >
@@ -504,18 +578,37 @@ export const IntakePage: React.FC = () => {
           <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
             Detected items
           </Typography>
-          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1, flexWrap: "wrap" }}>
+          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1, flexWrap: "wrap", rowGap: 0.5 }}>
             <Typography variant="caption" color="text.secondary">
               {matchedCount} matched · {unmatchedCount} unmatched
             </Typography>
-            {store && (
+            {stores.length === 1 && (
               <Chip
                 size="small"
                 icon={<StorefrontOutlinedIcon sx={{ fontSize: 14 }} />}
-                label={store}
+                label={stores[0]}
                 variant="outlined"
                 sx={{ fontSize: "0.7rem", height: 22 }}
               />
+            )}
+            {stores.length > 1 && (
+              <>
+                <Typography variant="caption" color="text.secondary">
+                  · attribute to:
+                </Typography>
+                {stores.map((s) => (
+                  <Chip
+                    key={s}
+                    size="small"
+                    icon={<StorefrontOutlinedIcon sx={{ fontSize: 14 }} />}
+                    label={s}
+                    variant={s === selectedStore ? "filled" : "outlined"}
+                    color={s === selectedStore ? "primary" : "default"}
+                    onClick={() => setSelectedStore(s)}
+                    sx={{ fontSize: "0.7rem", height: 22, cursor: "pointer" }}
+                  />
+                ))}
+              </>
             )}
           </Stack>
 
