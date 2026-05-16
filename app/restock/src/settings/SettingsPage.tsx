@@ -104,22 +104,27 @@ export const SettingsPage: React.FC = () => {
     [firebaseUser]
   );
 
-  // ------- My profile (display name) -------
+  // ------- My profile (display name + language) -------
   const [profileDisplayName, setProfileDisplayName] = React.useState("");
+  const [profileLanguage, setProfileLanguage] = React.useState("en");
   const [profileBusy, setProfileBusy] = React.useState(false);
   const [profileSaved, setProfileSaved] = React.useState(false);
   const [profileError, setProfileError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setProfileDisplayName(userProfile?.displayName || "");
-  }, [userProfile?.displayName]);
+    setProfileLanguage(userProfile?.language || "en");
+  }, [userProfile?.displayName, userProfile?.language]);
 
   const saveProfile = async () => {
     setProfileBusy(true);
     setProfileError(null);
     setProfileSaved(false);
     try {
-      await updateProfile({ displayName: profileDisplayName.trim() });
+      await updateProfile({
+        displayName: profileDisplayName.trim(),
+        language: profileLanguage,
+      });
       setProfileSaved(true);
     } catch (e: any) {
       setProfileError(e?.message || "Failed to save");
@@ -526,11 +531,40 @@ export const SettingsPage: React.FC = () => {
           helperText="Shown across the app — e.g. 'added by Eddie'. Leave blank to use your full name."
           fullWidth
         />
+        <TextField
+          select
+          label="Language"
+          size="small"
+          value={profileLanguage}
+          onChange={(e) => setProfileLanguage(e.target.value)}
+          SelectProps={{ native: true }}
+          helperText="Item names from receipt scans are returned in this language."
+          fullWidth
+        >
+          <option value="en">English</option>
+          <option value="de">Deutsch (German)</option>
+          <option value="fr">Français (French)</option>
+          <option value="es">Español (Spanish)</option>
+          <option value="it">Italiano (Italian)</option>
+          <option value="nl">Nederlands (Dutch)</option>
+          <option value="pl">Polski (Polish)</option>
+          <option value="pt">Português (Portuguese)</option>
+          <option value="sv">Svenska (Swedish)</option>
+          <option value="da">Dansk (Danish)</option>
+          <option value="no">Norsk (Norwegian)</option>
+          <option value="fi">Suomi (Finnish)</option>
+          <option value="cs">Čeština (Czech)</option>
+          <option value="tr">Türkçe (Turkish)</option>
+        </TextField>
         <Box>
           <Button
             onClick={saveProfile}
             variant="contained"
-            disabled={profileBusy || profileDisplayName === (userProfile?.displayName || "")}
+            disabled={
+              profileBusy ||
+              (profileDisplayName === (userProfile?.displayName || "") &&
+                profileLanguage === (userProfile?.language || "en"))
+            }
           >
             {profileBusy ? <CircularProgress size={18} color="inherit" /> : "Save"}
           </Button>

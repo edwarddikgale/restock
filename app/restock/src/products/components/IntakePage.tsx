@@ -277,6 +277,8 @@ export const IntakePage: React.FC = () => {
             quantity: i.editedQuantity,
             price: typeof i.price === "number" ? i.price : undefined,
             measure: i.measure ?? undefined,
+            originalName: i.originalName?.trim() || undefined,
+            originalLanguage: i.originalLanguage ?? undefined,
           }));
         // Unmatched picked items become brand-new products at 100% in the
         // chosen section.

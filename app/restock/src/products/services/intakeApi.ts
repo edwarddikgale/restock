@@ -88,6 +88,10 @@ export interface IntakeFillItem {
   quantity?: number;
   price?: number;
   measure?: string | null;
+  /** Original receipt text in the source language — backend folds it into the product's synonym if new. */
+  originalName?: string;
+  /** ISO-639-1 code of the originalName, when known. */
+  originalLanguage?: string | null;
 }
 
 export interface ApplyFillResult {

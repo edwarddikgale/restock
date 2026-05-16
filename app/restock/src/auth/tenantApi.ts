@@ -100,6 +100,8 @@ export async function removeTenantMember(userId: string, getToken: GetToken): Pr
 export interface UserProfilePatch {
   displayName?: string;
   fullName?: string;
+  country?: string;
+  language?: string;
   notifyEmail?: boolean;
   notifyAtHour?: number;
   notifyTimezone?: string;
@@ -112,6 +114,8 @@ export interface UserProfileFull {
   fullName: string;
   displayName?: string;
   email: string;
+  country?: string;
+  language?: string;
   notifyEmail?: boolean;
   notifyAtHour?: number;
   notifyTimezone?: string;

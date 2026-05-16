@@ -25,6 +25,9 @@ export interface UserProfile {
   fullName: string;
   displayName?: string;
   email: string;
+  country?: string;
+  /** ISO-639-1 code of the user's preferred language for AI item names (e.g. "en", "de"). */
+  language?: string;
   notifyEmail?: boolean;
   notifyAtHour?: number;
   notifyTimezone?: string;
