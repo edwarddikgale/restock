@@ -38,6 +38,29 @@ import humanDate from "../../common/utils/date/humanDate";
 
 const UNCATEGORISED_KEY = "__loose__";
 
+const MEASURE_SHORT: Record<string, string> = {
+  Litres: "L",
+  Millilitres: "mL",
+  Kilograms: "kg",
+  Grams: "g",
+  Units: "unit",
+  Packages: "pack",
+};
+
+function stockReadout(
+  percentageLeft: number,
+  defaultQuantity: number,
+  measureType: string
+): string {
+  const pct = Math.round(percentageLeft);
+  if (!defaultQuantity || defaultQuantity <= 0) return `${pct}% left`;
+  const remaining = (percentageLeft / 100) * defaultQuantity;
+  const remainingStr =
+    remaining % 1 === 0 ? String(remaining) : remaining.toFixed(1);
+  const unit = MEASURE_SHORT[measureType] || measureType;
+  return `${remainingStr} / ${defaultQuantity} ${unit} left · ${pct}%`;
+}
+
 export const ShoppingPage: React.FC = () => {
   const navigate = useNavigate();
   const { firebaseUser } = useAuth();
@@ -260,9 +283,25 @@ export const ShoppingPage: React.FC = () => {
                         sx={{ flex: 1, minWidth: 0, py: 0.5, cursor: "pointer" }}
                         onClick={() => toggleChecked(item)}
                       >
-                        <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>
-                          {item.product?.name || item.freeText || "Item"}
-                        </Typography>
+                        <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>
+                            {item.product?.name || item.freeText || "Item"}
+                          </Typography>
+                          {item.product && typeof item.product.percentageLeft === "number" && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}
+                              noWrap
+                            >
+                              {stockReadout(
+                                item.product.percentageLeft,
+                                item.product.defaultQuantity,
+                                item.product.measureType
+                              )}
+                            </Typography>
+                          )}
+                        </Stack>
                         <Typography variant="caption" color="text.secondary">
                           {item.qty ? `${item.qty} · ` : ""}
                           added by {item.addedByName} · {humanDate(item.addedAt)}

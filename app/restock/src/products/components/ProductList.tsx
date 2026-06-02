@@ -11,12 +11,63 @@ import {
   ToggleButtonGroup,
   Collapse,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 import TuneIcon from "@mui/icons-material/Tune";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+/**
+ * Three-bar priority indicator — no color, shape only.
+ * Critical: all 3 bars filled at full height.
+ * Normal:   2 bars filled, shorter.
+ * Optional (low): 1 bar, shortest.
+ *
+ * Inspired by Wi-Fi / signal-strength metaphors: more bars = more important.
+ * Using opacity rather than color keeps it neutral and accessible.
+ */
+const CRITICALITY_CONFIG = {
+  critical: { bars: 3, tooltip: "Critical — must keep stocked" },
+  normal:   { bars: 2, tooltip: "Normal importance" },
+  low:      { bars: 1, tooltip: "Optional" },
+} as const;
+
+const BAR_HEIGHTS = [5, 8, 11]; // px — short → tall
+
+const CriticalityBars: React.FC<{ criticality?: string }> = ({ criticality }) => {
+  const cfg = CRITICALITY_CONFIG[(criticality || "low") as keyof typeof CRITICALITY_CONFIG]
+    ?? CRITICALITY_CONFIG.low;
+  return (
+    <Tooltip title={cfg.tooltip} arrow disableInteractive>
+      <Box
+        aria-label={cfg.tooltip}
+        sx={{
+          display: "inline-flex",
+          alignItems: "flex-end",
+          gap: "1.5px",
+          flexShrink: 0,
+          height: 14,
+          mr: 0.25,
+        }}
+      >
+        {BAR_HEIGHTS.map((h, i) => (
+          <Box
+            key={i}
+            sx={{
+              width: 3,
+              height: h,
+              borderRadius: 0.5,
+              bgcolor: i < cfg.bars ? "text.primary" : "text.disabled",
+              opacity: i < cfg.bars ? (criticality === "critical" ? 0.85 : 0.45) : 0.18,
+              transition: "opacity 0.15s",
+            }}
+          />
+        ))}
+      </Box>
+    </Tooltip>
+  );
+};
 import { useShoppingList } from "../state/shopping";
 import { addShoppingItem, removeShoppingItem } from "../services/shoppingApi";
 import { useProducts } from "../state/products";
@@ -386,7 +437,8 @@ export const ProductList: React.FC = () => {
                     py: 0.25,
                   }}
                 >
-                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Stack direction="row" alignItems="center" spacing={0.25}>
+                    <CriticalityBars criticality={p.criticality} />
                     <Typography
                       variant="subtitle2"
                       noWrap

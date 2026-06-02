@@ -7,6 +7,39 @@ import humanDate from "../../common/utils/date/humanDate";
 import { formatInventoryHint } from "../utils/inventory";
 import { ProductHistoryTable } from "./ProductHistoryTable";
 
+const CRITICALITY_CHIP: Record<
+  string,
+  { label: string; variant: "filled" | "outlined"; sx?: object }
+> = {
+  critical: {
+    label: "Critical",
+    variant: "filled",
+    sx: { fontWeight: 700 },
+  },
+  normal: {
+    label: "Normal",
+    variant: "outlined",
+    sx: {},
+  },
+  low: {
+    label: "Optional",
+    variant: "outlined",
+    sx: { opacity: 0.55 },
+  },
+};
+
+const CriticalityChip: React.FC<{ criticality?: string }> = ({ criticality }) => {
+  const cfg = CRITICALITY_CHIP[criticality || "low"] ?? CRITICALITY_CHIP.low;
+  return (
+    <Chip
+      size="small"
+      label={cfg.label}
+      variant={cfg.variant}
+      sx={cfg.sx}
+    />
+  );
+};
+
 function stockColor(pct: number) {
   if (pct >= 75) return "success.main";
   if (pct <= 25) return "error.main";
@@ -46,7 +79,7 @@ export const ProductView: React.FC = () => {
         </Typography>
       </Stack>
 
-      {/* Header — name, optional synonym */}
+      {/* Header — name */}
       <Typography variant="h5" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
         {p.name}
       </Typography>
@@ -59,6 +92,7 @@ export const ProductView: React.FC = () => {
       <Stack direction="row" gap={0.75} sx={{ mt: 1, mb: 2.5, flexWrap: "wrap" }}>
         <Chip size="small" label={p.category} />
         <Chip size="small" label={p.measureType} variant="outlined" />
+        <CriticalityChip criticality={p.criticality} />
       </Stack>
 
       {/* Current stock — visual focal point */}

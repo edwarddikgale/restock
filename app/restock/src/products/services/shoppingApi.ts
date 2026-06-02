@@ -6,6 +6,7 @@ export interface ShoppingProductSnapshot {
   spaceId: string;
   measureType: string;
   defaultQuantity: number;
+  percentageLeft: number;
   category: string;
   preferredStores: string[];
 }

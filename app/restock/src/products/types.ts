@@ -24,6 +24,8 @@ export type Category =
 // Store names are now user-managed per tenant — kept as a free-form string.
 export type Store = string;
 
+export type ProductCriticality = "critical" | "normal" | "low";
+
 export interface Product {
   id: string;
   tenantId: TenantId; // supports couple/shared
@@ -36,6 +38,7 @@ export interface Product {
   defaultQuantity: number; // how much we usually stock
   percentageLeft: number; // 0..100 slider
   notes?: string;
+  criticality?: ProductCriticality;
   lastUpdatedOn: string; // ISO string
   createdOn: string; // ISO string
 }

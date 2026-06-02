@@ -12,9 +12,10 @@ import {
   FormControlLabel,
   Checkbox,
   Tooltip,
+  FormLabel,
 } from "@mui/material";
 import { CATEGORIES, MEASURE_TYPES } from "../mockData";
-import type { Product } from "../types";
+import type { Product, ProductCriticality } from "../types";
 import humanDate from "../../common/utils/date/humanDate";
 import { fetchMyStores, type Store as StoreOption } from "../services/storesApi";
 import { useAuth } from "../../auth/AuthContext";
@@ -176,6 +177,31 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             ))}
           </FormGroup>
         )}
+
+        {/* Criticality picker */}
+        <Box>
+          <FormLabel sx={{ fontSize: "0.82rem" }}>How important is this?</FormLabel>
+          <Stack direction="row" spacing={0.75} sx={{ mt: 0.75 }}>
+            {(
+              [
+                { value: "critical", label: "Critical", tooltip: "Must always have. Included in the default digest." },
+                { value: "normal",   label: "Normal",   tooltip: "Important but not urgent." },
+                { value: "low",      label: "Optional", tooltip: "Default. Only in digest when 'All items' is enabled." },
+              ] as { value: ProductCriticality; label: string; tooltip: string }[]
+            ).map((o) => (
+              <Tooltip key={o.value} title={o.tooltip} arrow disableInteractive>
+                <Chip
+                  label={o.label}
+                  size="small"
+                  variant={(value.criticality ?? "low") === o.value ? "filled" : "outlined"}
+                  color={(value.criticality ?? "low") === o.value ? "primary" : "default"}
+                  onClick={() => update("criticality", o.value)}
+                  sx={{ cursor: "pointer" }}
+                />
+              </Tooltip>
+            ))}
+          </Stack>
+        </Box>
 
         <TextField
           label="Notes"

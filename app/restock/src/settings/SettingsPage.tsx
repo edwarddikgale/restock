@@ -311,6 +311,7 @@ export const SettingsPage: React.FC = () => {
   const [notifyAtHour, setNotifyAtHour] = React.useState(16);
   const [notifyTimezone, setNotifyTimezone] = React.useState("Europe/Berlin");
   const [notifyDays, setNotifyDays] = React.useState<number[]>([1, 5]);
+  const [digestScope, setDigestScope] = React.useState<"critical" | "all">("critical");
   const [notifyBusy, setNotifyBusy] = React.useState(false);
   const [notifySaved, setNotifySaved] = React.useState(false);
 
@@ -323,11 +324,13 @@ export const SettingsPage: React.FC = () => {
         ? userProfile!.notifyDays!
         : [1, 5]
     );
+    setDigestScope(userProfile?.digestScope === "all" ? "all" : "critical");
   }, [
     userProfile?.notifyEmail,
     userProfile?.notifyAtHour,
     userProfile?.notifyTimezone,
     userProfile?.notifyDays,
+    userProfile?.digestScope,
     browserTz,
   ]);
 
@@ -340,6 +343,7 @@ export const SettingsPage: React.FC = () => {
         notifyAtHour,
         notifyTimezone,
         notifyDays,
+        digestScope,
       });
       setNotifySaved(true);
     } catch (e: any) {
@@ -795,6 +799,40 @@ export const SettingsPage: React.FC = () => {
           </Typography>
         )}
 
+        {/* Digest scope */}
+        <Box>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mb: 0.5, fontWeight: 600 }}
+          >
+            Include in digest
+          </Typography>
+          <RadioGroup
+            value={digestScope}
+            onChange={(e) => setDigestScope(e.target.value as "critical" | "all")}
+          >
+            <FormControlLabel
+              value="critical"
+              control={<Radio size="small" disabled={!notifyEmail} />}
+              label={
+                <Typography variant="body2">
+                  Only critical items running low
+                </Typography>
+              }
+            />
+            <FormControlLabel
+              value="all"
+              control={<Radio size="small" disabled={!notifyEmail} />}
+              label={
+                <Typography variant="body2">
+                  All items running low
+                </Typography>
+              }
+            />
+          </RadioGroup>
+        </Box>
+
         <Box sx={{ mt: 1.5 }} />
 
         <TextField
@@ -827,7 +865,8 @@ export const SettingsPage: React.FC = () => {
                 notifyAtHour === (userProfile?.notifyAtHour ?? 16) &&
                 notifyTimezone === (userProfile?.notifyTimezone || browserTz) &&
                 JSON.stringify(notifyDays) ===
-                  JSON.stringify(userProfile?.notifyDays?.length ? userProfile.notifyDays : [1, 5]))
+                  JSON.stringify(userProfile?.notifyDays?.length ? userProfile.notifyDays : [1, 5]) &&
+                digestScope === (userProfile?.digestScope ?? "critical"))
             }
           >
             {notifyBusy ? <CircularProgress size={18} color="inherit" /> : "Save notifications"}
