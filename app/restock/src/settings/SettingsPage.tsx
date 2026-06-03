@@ -311,7 +311,7 @@ export const SettingsPage: React.FC = () => {
   const [notifyAtHour, setNotifyAtHour] = React.useState(16);
   const [notifyTimezone, setNotifyTimezone] = React.useState("Europe/Berlin");
   const [notifyDays, setNotifyDays] = React.useState<number[]>([1, 5]);
-  const [digestScope, setDigestScope] = React.useState<"critical" | "all">("critical");
+  const [digestScope, setDigestScope] = React.useState<"critical" | "all" | "shopping">("critical");
   const [notifyBusy, setNotifyBusy] = React.useState(false);
   const [notifySaved, setNotifySaved] = React.useState(false);
 
@@ -324,7 +324,13 @@ export const SettingsPage: React.FC = () => {
         ? userProfile!.notifyDays!
         : [1, 5]
     );
-    setDigestScope(userProfile?.digestScope === "all" ? "all" : "critical");
+    setDigestScope(
+      userProfile?.digestScope === "all"
+        ? "all"
+        : userProfile?.digestScope === "shopping"
+        ? "shopping"
+        : "critical"
+    );
   }, [
     userProfile?.notifyEmail,
     userProfile?.notifyAtHour,
@@ -810,25 +816,22 @@ export const SettingsPage: React.FC = () => {
           </Typography>
           <RadioGroup
             value={digestScope}
-            onChange={(e) => setDigestScope(e.target.value as "critical" | "all")}
+            onChange={(e) => setDigestScope(e.target.value as "critical" | "all" | "shopping")}
           >
             <FormControlLabel
               value="critical"
               control={<Radio size="small" disabled={!notifyEmail} />}
-              label={
-                <Typography variant="body2">
-                  Only critical items running low
-                </Typography>
-              }
+              label={<Typography variant="body2">Only critical items running low</Typography>}
             />
             <FormControlLabel
               value="all"
               control={<Radio size="small" disabled={!notifyEmail} />}
-              label={
-                <Typography variant="body2">
-                  All items running low
-                </Typography>
-              }
+              label={<Typography variant="body2">All items running low</Typography>}
+            />
+            <FormControlLabel
+              value="shopping"
+              control={<Radio size="small" disabled={!notifyEmail} />}
+              label={<Typography variant="body2">Items in my shopping basket</Typography>}
             />
           </RadioGroup>
         </Box>

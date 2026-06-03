@@ -106,7 +106,7 @@ export interface UserProfilePatch {
   notifyAtHour?: number;
   notifyTimezone?: string;
   notifyDays?: number[];
-  digestScope?: "critical" | "all";
+  digestScope?: "critical" | "all" | "shopping";
 }
 
 export interface UserProfileFull {
@@ -121,7 +121,7 @@ export interface UserProfileFull {
   notifyAtHour?: number;
   notifyTimezone?: string;
   notifyDays?: number[];
-  digestScope?: "critical" | "all";
+  digestScope?: "critical" | "all" | "shopping";
 }
 
 export async function updateMyProfile(

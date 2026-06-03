@@ -28,8 +28,8 @@ export interface UserProfile {
   country?: string;
   /** ISO-639-1 code of the user's preferred language for AI item names (e.g. "en", "de"). */
   language?: string;
-  /** Which products appear in the daily digest: "critical" (default) or "all". */
-  digestScope?: "critical" | "all";
+  /** Which products appear in the daily digest: "critical" (default), "all", or "shopping". */
+  digestScope?: "critical" | "all" | "shopping";
   notifyEmail?: boolean;
   notifyAtHour?: number;
   notifyTimezone?: string;
