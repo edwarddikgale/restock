@@ -160,6 +160,7 @@ export const ProductsProvider: React.FC<React.PropsWithChildren> = ({ children }
           defaultQuantity: patch.defaultQuantity,
           percentageLeft: patch.percentageLeft,
           notes: patch.notes,
+          criticality: patch.criticality,
           lastUpdatedOn: new Date().toISOString(),
         });
         dispatch({ type: "update", product: updated });

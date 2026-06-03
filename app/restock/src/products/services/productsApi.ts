@@ -40,6 +40,7 @@ function mapDbProduct(p: DbProduct): Product {
     defaultQuantity: p.defaultQuantity,
     percentageLeft: p.percentageLeft,
     notes: (p as any).notes ?? "",
+    criticality: (p as any).criticality ?? "low",
     createdOn: toIso(p.createdOn),
     lastUpdatedOn: toIso(p.lastUpdatedOn),
   };
@@ -65,6 +66,7 @@ export type CreateProductInput = {
   defaultQuantity: number;
   percentageLeft: number;
   notes?: string;
+  criticality?: "critical" | "normal" | "low";
   // optional if you want to pass; backend sets defaults
   createdOn?: string;
   lastUpdatedOn?: string;
