@@ -18,46 +18,49 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import BookmarkIcon from "@mui/icons-material/Bookmark";
+import PushPinIcon from "@mui/icons-material/PushPin";
 /**
  * Criticality indicator for compact list rows.
  *
- * critical  → filled bookmark icon  (universally: "flagged / must-have")
- * normal    → small filled dot      (subtle: "worth noting")
- * low       → nothing               (default, no noise)
- *
- * Only two shapes, both immediately legible. Tooltip confirms the label.
+ * critical → filled push pin (slightly tilted) — "pinned as essential"
+ * normal   → small filled dot                  — "worth noting"
+ * low      → nothing                            — default, no noise
  */
 const CriticalityMark: React.FC<{ criticality?: string }> = ({ criticality }) => {
-  if (!criticality || criticality === "low") return null;
-
   if (criticality === "critical") {
     return (
       <Tooltip title="Critical — must keep stocked" arrow disableInteractive>
-        <BookmarkIcon
+        <PushPinIcon
           aria-label="Critical"
-          sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }}
+          sx={{
+            fontSize: 15,
+            color: "text.primary",
+            opacity: 0.75,
+            flexShrink: 0,
+            transform: "rotate(-25deg)",
+          }}
         />
       </Tooltip>
     );
   }
-
-  // normal
-  return (
-    <Tooltip title="Normal importance" arrow disableInteractive>
-      <Box
-        aria-label="Normal importance"
-        sx={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          bgcolor: "text.disabled",
-          flexShrink: 0,
-          alignSelf: "center",
-        }}
-      />
-    </Tooltip>
-  );
+  if (criticality === "normal") {
+    return (
+      <Tooltip title="Normal importance" arrow disableInteractive>
+        <Box
+          aria-label="Normal importance"
+          sx={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            bgcolor: "text.secondary",
+            opacity: 0.5,
+            flexShrink: 0,
+          }}
+        />
+      </Tooltip>
+    );
+  }
+  return null;
 };
 import { useShoppingList } from "../state/shopping";
 import { addShoppingItem, removeShoppingItem } from "../services/shoppingApi";
