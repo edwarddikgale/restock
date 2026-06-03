@@ -18,53 +18,44 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import BookmarkIcon from "@mui/icons-material/Bookmark";
 /**
- * Three-bar priority indicator — no color, shape only.
- * Critical: all 3 bars filled at full height.
- * Normal:   2 bars filled, shorter.
- * Optional (low): 1 bar, shortest.
+ * Criticality indicator for compact list rows.
  *
- * Inspired by Wi-Fi / signal-strength metaphors: more bars = more important.
- * Using opacity rather than color keeps it neutral and accessible.
+ * critical  → filled bookmark icon  (universally: "flagged / must-have")
+ * normal    → small filled dot      (subtle: "worth noting")
+ * low       → nothing               (default, no noise)
+ *
+ * Only two shapes, both immediately legible. Tooltip confirms the label.
  */
-const CRITICALITY_CONFIG = {
-  critical: { bars: 3, tooltip: "Critical — must keep stocked" },
-  normal:   { bars: 2, tooltip: "Normal importance" },
-  low:      { bars: 1, tooltip: "Optional" },
-} as const;
+const CriticalityMark: React.FC<{ criticality?: string }> = ({ criticality }) => {
+  if (!criticality || criticality === "low") return null;
 
-const BAR_HEIGHTS = [5, 8, 11]; // px — short → tall
+  if (criticality === "critical") {
+    return (
+      <Tooltip title="Critical — must keep stocked" arrow disableInteractive>
+        <BookmarkIcon
+          aria-label="Critical"
+          sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }}
+        />
+      </Tooltip>
+    );
+  }
 
-const CriticalityBars: React.FC<{ criticality?: string }> = ({ criticality }) => {
-  const cfg = CRITICALITY_CONFIG[(criticality || "low") as keyof typeof CRITICALITY_CONFIG]
-    ?? CRITICALITY_CONFIG.low;
+  // normal
   return (
-    <Tooltip title={cfg.tooltip} arrow disableInteractive>
+    <Tooltip title="Normal importance" arrow disableInteractive>
       <Box
-        aria-label={cfg.tooltip}
+        aria-label="Normal importance"
         sx={{
-          display: "inline-flex",
-          alignItems: "flex-end",
-          gap: "1.5px",
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          bgcolor: "text.disabled",
           flexShrink: 0,
-          height: 14,
-          mr: 0.25,
+          alignSelf: "center",
         }}
-      >
-        {BAR_HEIGHTS.map((h, i) => (
-          <Box
-            key={i}
-            sx={{
-              width: 3,
-              height: h,
-              borderRadius: 0.5,
-              bgcolor: i < cfg.bars ? "text.primary" : "text.disabled",
-              opacity: i < cfg.bars ? (criticality === "critical" ? 0.85 : 0.45) : 0.18,
-              transition: "opacity 0.15s",
-            }}
-          />
-        ))}
-      </Box>
+      />
     </Tooltip>
   );
 };
@@ -437,8 +428,8 @@ export const ProductList: React.FC = () => {
                     py: 0.25,
                   }}
                 >
-                  <Stack direction="row" alignItems="center" spacing={0.25}>
-                    <CriticalityBars criticality={p.criticality} />
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <CriticalityMark criticality={p.criticality} />
                     <Typography
                       variant="subtitle2"
                       noWrap
