@@ -134,7 +134,7 @@ export const SectionsDashboard: React.FC = () => {
   };
 
   return (
-    <Box sx={{ pb: 9 }}>
+    <Box sx={{ pb: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
       {/* ---------- Hero overview ---------- */}
       <Paper
         variant="outlined"

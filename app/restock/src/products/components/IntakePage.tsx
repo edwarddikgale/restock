@@ -367,7 +367,7 @@ export const IntakePage: React.FC = () => {
     destination === "shopping" && unmatchedCount > 0 && !newItemSpaceId;
 
   return (
-    <Box sx={{ pb: 9 }}>
+    <Box sx={{ pb: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
       {/* Back */}
       <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
         <IconButton size="small" onClick={() => navigate(-1)} aria-label="Back" sx={{ ml: -1 }}>

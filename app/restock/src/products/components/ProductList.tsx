@@ -390,7 +390,7 @@ export const ProductList: React.FC = () => {
       </Collapse>
 
       {/* Cards */}
-      <Stack spacing={0.5} sx={{ pb: 9 }}>
+      <Stack spacing={0.5} sx={{ pb: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
         {filtered.map((p) => {
           const pct = Number.isFinite(p.percentageLeft) ? p.percentageLeft : 0;
           const trackColor = pctColor(pct);

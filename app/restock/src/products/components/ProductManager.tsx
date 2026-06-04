@@ -52,7 +52,7 @@ export const ProductManager: React.FC = () => {
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
 
-      <Paper sx={{ position: "fixed", left: 0, right: 0, bottom: 0 }} elevation={3}>
+      <Paper sx={{ position: "fixed", left: 0, right: 0, bottom: 0, pb: "env(safe-area-inset-bottom, 0px)" }} elevation={3}>
         <BottomNavigation value={activeNav} showLabels>
           <BottomNavigationAction
             label="Sections"

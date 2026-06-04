@@ -56,7 +56,7 @@ export const ShoppingHistoryPage: React.FC = () => {
   }, [load]);
 
   return (
-    <Box sx={{ pb: 9 }}>
+    <Box sx={{ pb: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
       {/* Back to active shopping */}
       <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
         <IconButton size="small" onClick={() => navigate(-1)} aria-label="Back" sx={{ ml: -1 }}>

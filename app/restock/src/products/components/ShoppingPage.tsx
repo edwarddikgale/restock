@@ -173,7 +173,7 @@ export const ShoppingPage: React.FC = () => {
   const doneItems = list.items.filter((i) => i.checked);
 
   return (
-    <Box sx={{ pb: 9 }}>
+    <Box sx={{ pb: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
       {/* Header */}
       <Paper
         variant="outlined"

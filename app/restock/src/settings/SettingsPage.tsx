@@ -680,7 +680,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ pb: 10 }}>
+    <Box sx={{ pb: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
       <Typography variant="h6" sx={{ mb: 1 }}>
         Settings
       </Typography>
