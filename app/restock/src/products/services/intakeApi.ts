@@ -117,12 +117,15 @@ export async function applyIntakeFill(
 }
 
 export async function applyIntakeShopping(
-  items: Array<{ productId?: string; freeText?: string; qty?: number }>,
+  payload: {
+    items: Array<{ productId?: string; freeText?: string; qty?: number }>;
+    defaultSpaceId?: string;
+  },
   getToken: GetToken
-): Promise<{ addedCount: number }> {
-  return call<{ addedCount: number }>(
+): Promise<{ addedCount: number; createdCount: number }> {
+  return call<{ addedCount: number; createdCount: number }>(
     "/api/intake/apply-shopping",
-    { method: "POST", body: JSON.stringify({ items }) },
+    { method: "POST", body: JSON.stringify(payload) },
     getToken
   );
 }

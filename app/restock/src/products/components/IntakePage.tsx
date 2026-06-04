@@ -310,13 +310,20 @@ export const IntakePage: React.FC = () => {
         setApplyResult(parts.length ? parts.join(" · ") : "Nothing to do.");
         await reloadProducts(true);
       } else {
-        const payload = picked.map((i) =>
+        const shoppingItems = picked.map((i) =>
           i.chosenProductId
             ? { productId: i.chosenProductId, qty: i.editedQuantity }
             : { freeText: i.name, qty: i.editedQuantity }
         );
-        const res = await applyIntakeShopping(payload, () => firebaseUser.getIdToken());
-        setApplyResult(`Added ${res.addedCount} ${res.addedCount === 1 ? "item" : "items"} to your shopping list.`);
+        const res = await applyIntakeShopping(
+          { items: shoppingItems, defaultSpaceId: unmatchedCount > 0 ? newItemSpaceId : undefined },
+          () => firebaseUser.getIdToken()
+        );
+        const parts: string[] = [];
+        if (res.addedCount) parts.push(`${res.addedCount} ${res.addedCount === 1 ? "item" : "items"} added to shopping list`);
+        if (res.createdCount) parts.push(`${res.createdCount} new ${res.createdCount === 1 ? "product" : "products"} created`);
+        setApplyResult(parts.length ? parts.join(" · ") : "Nothing to do.");
+        if (res.createdCount) await reloadProducts(true);
         await reloadShopping();
       }
       setItems(null);
@@ -352,10 +359,12 @@ export const IntakePage: React.FC = () => {
   const matchedCount = items?.filter((i) => i.selected && i.chosenProductId).length ?? 0;
   const unmatchedCount = items?.filter((i) => i.selected && !i.chosenProductId).length ?? 0;
 
-  // Fill action: matched items refill stock, unmatched ones get created at 100%
-  // in the chosen section. So it's available whenever ANY items are selected.
+  // Fill: requires a section when there are unmatched items (they get created at 100%).
+  // Shopping: requires a section when there are unmatched items (they get created at 0%).
   const fillUnavailable =
     destination === "fill" && unmatchedCount > 0 && !newItemSpaceId;
+  const shoppingUnavailable =
+    destination === "shopping" && unmatchedCount > 0 && !newItemSpaceId;
 
   return (
     <Box sx={{ pb: 9 }}>
@@ -754,11 +763,42 @@ export const IntakePage: React.FC = () => {
               </>
             )}
 
+            {destination === "shopping" && unmatchedCount > 0 && (
+              <>
+                <Alert severity="info">
+                  {unmatchedCount} unmatched {unmatchedCount === 1 ? "item" : "items"} will be{" "}
+                  <strong>added to your product list</strong> in the section below.
+                </Alert>
+                {spaces.length > 0 ? (
+                  <TextField
+                    select
+                    label="Section for new items"
+                    size="small"
+                    value={newItemSpaceId}
+                    onChange={(e) => setNewItemSpaceId(e.target.value)}
+                    SelectProps={{ native: true }}
+                    fullWidth
+                  >
+                    {spaces.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </TextField>
+                ) : (
+                  <Alert severity="warning">
+                    No sections found in your workspace yet. Create one in Settings before
+                    adding new products.
+                  </Alert>
+                )}
+              </>
+            )}
+
             <Button
               variant="contained"
               size="large"
               onClick={handleApply}
-              disabled={applying || fillUnavailable || items.filter((i) => i.selected).length === 0}
+              disabled={applying || fillUnavailable || shoppingUnavailable || items.filter((i) => i.selected).length === 0}
             >
               {applying ? <CircularProgress size={20} color="inherit" /> : "Apply"}
             </Button>
