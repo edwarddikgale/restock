@@ -34,6 +34,7 @@ import {
   type ShoppingItem,
 } from "../services/shoppingApi";
 import { fetchMySpaces, type Space } from "../services/spacesApi";
+import { estimateItemPrices } from "../services/intakeApi";
 import humanDate from "../../common/utils/date/humanDate";
 
 const UNCATEGORISED_KEY = "__loose__";
@@ -72,6 +73,8 @@ export const ShoppingPage: React.FC = () => {
   const [markAllFilled, setMarkAllFilled] = React.useState(true);
   const [finishing, setFinishing] = React.useState(false);
   const [showDone, setShowDone] = React.useState(false);
+  const [aiPrices, setAiPrices] = React.useState<Record<string, number>>({});
+  const [estimating, setEstimating] = React.useState(false);
 
   React.useEffect(() => {
     if (!firebaseUser) return;
@@ -79,6 +82,36 @@ export const ShoppingPage: React.FC = () => {
       .then(setSpaces)
       .catch(() => setSpaces([]));
   }, [firebaseUser]);
+
+  React.useEffect(() => {
+    if (!firebaseUser || !list) return;
+    const unpriced = list.items
+      .filter((i) => !i.checked && !i.product?.lastPrice)
+      .map((i) => ({ id: i._id, name: i.product?.name || i.freeText || "" }))
+      .filter((i) => i.name);
+    if (unpriced.length === 0) return;
+
+    setEstimating(true);
+    estimateItemPrices(
+      unpriced.map((i) => ({ name: i.name })),
+      "Europe",
+      () => firebaseUser.getIdToken()
+    )
+      .then((estimates) => {
+        const map: Record<string, number> = {};
+        estimates.forEach((e) => {
+          const match = unpriced.find(
+            (u) => u.name.toLowerCase() === e.name.toLowerCase()
+          );
+          if (match && e.price > 0) map[match.id] = e.price;
+        });
+        setAiPrices(map);
+      })
+      .catch(() => {})
+      .finally(() => setEstimating(false));
+  // Only run when list identity changes (items added/removed), not on every re-render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser, list?._id, list?.items.length]);
 
   const sectionNameById = React.useMemo(() => {
     const m = new Map<string, string>();
@@ -109,7 +142,7 @@ export const ShoppingPage: React.FC = () => {
     let sum = 0;
     let priced = 0;
     for (const item of todoItems) {
-      const price = item.product?.lastPrice;
+      const price = item.product?.lastPrice ?? aiPrices[item._id];
       if (typeof price === "number" && price > 0) {
         sum += price * (item.qty || 1);
         priced++;
@@ -117,7 +150,7 @@ export const ShoppingPage: React.FC = () => {
     }
     if (priced === 0) return null;
     return { sum, priced, total: todoItems.length };
-  }, [list]);
+  }, [list, aiPrices]);
 
   const toggleChecked = async (item: ShoppingItem) => {
     if (!firebaseUser) return;
@@ -214,7 +247,12 @@ export const ShoppingPage: React.FC = () => {
                 Started {humanDate(list.createdAt)}
               </Typography>
             )}
-            {estimatedTotal && (
+            {estimating && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                Estimating prices…
+              </Typography>
+            )}
+            {!estimating && estimatedTotal && (
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
                 ~€{estimatedTotal.sum.toFixed(2)}
                 {estimatedTotal.priced < estimatedTotal.total && (
@@ -311,20 +349,37 @@ export const ShoppingPage: React.FC = () => {
                           <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>
                             {item.product?.name || item.freeText || "Item"}
                           </Typography>
-                          {item.product && typeof item.product.percentageLeft === "number" && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}
-                              noWrap
-                            >
-                              {stockReadout(
-                                item.product.percentageLeft,
-                                item.product.defaultQuantity,
-                                item.product.measureType
-                              )}
-                            </Typography>
-                          )}
+                          <Stack direction="row" spacing={1} alignItems="baseline" sx={{ flexShrink: 0 }}>
+                            {(() => {
+                              const price = item.product?.lastPrice ?? aiPrices[item._id];
+                              if (!price) return null;
+                              const isAi = !item.product?.lastPrice;
+                              return (
+                                <Typography
+                                  variant="caption"
+                                  color={isAi ? "text.secondary" : "text.primary"}
+                                  sx={{ fontVariantNumeric: "tabular-nums", fontStyle: isAi ? "italic" : "normal" }}
+                                  noWrap
+                                >
+                                  ~€{(price * (item.qty || 1)).toFixed(2)}
+                                </Typography>
+                              );
+                            })()}
+                            {item.product && typeof item.product.percentageLeft === "number" && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ fontVariantNumeric: "tabular-nums" }}
+                                noWrap
+                              >
+                                {stockReadout(
+                                  item.product.percentageLeft,
+                                  item.product.defaultQuantity,
+                                  item.product.measureType
+                                )}
+                              </Typography>
+                            )}
+                          </Stack>
                         </Stack>
                         <Typography variant="caption" color="text.secondary">
                           {item.qty ? `${item.qty} · ` : ""}

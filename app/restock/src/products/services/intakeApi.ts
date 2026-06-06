@@ -116,6 +116,19 @@ export async function applyIntakeFill(
   );
 }
 
+export async function estimateItemPrices(
+  items: Array<{ name: string; qty?: number }>,
+  country: string,
+  getToken: GetToken
+): Promise<Array<{ name: string; price: number }>> {
+  const data = await call<{ estimates: Array<{ name: string; price: number }> }>(
+    "/api/intake/estimate-prices",
+    { method: "POST", body: JSON.stringify({ items, country }) },
+    getToken
+  );
+  return data.estimates || [];
+}
+
 export async function applyIntakeShopping(
   payload: {
     items: Array<{ productId?: string; freeText?: string; qty?: number }>;
