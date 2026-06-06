@@ -9,6 +9,7 @@ export interface ShoppingProductSnapshot {
   percentageLeft: number;
   category: string;
   preferredStores: string[];
+  lastPrice?: number;
 }
 
 export interface ShoppingItem {

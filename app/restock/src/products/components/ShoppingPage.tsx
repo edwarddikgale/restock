@@ -103,6 +103,22 @@ export const ShoppingPage: React.FC = () => {
   const total = list?.items.length ?? 0;
   const doneCount = list?.items.filter((i) => i.checked).length ?? 0;
 
+  const estimatedTotal = React.useMemo(() => {
+    if (!list) return null;
+    const todoItems = list.items.filter((i) => !i.checked);
+    let sum = 0;
+    let priced = 0;
+    for (const item of todoItems) {
+      const price = item.product?.lastPrice;
+      if (typeof price === "number" && price > 0) {
+        sum += price * (item.qty || 1);
+        priced++;
+      }
+    }
+    if (priced === 0) return null;
+    return { sum, priced, total: todoItems.length };
+  }, [list]);
+
   const toggleChecked = async (item: ShoppingItem) => {
     if (!firebaseUser) return;
     setPending((p) => ({ ...p, [item._id]: true }));
@@ -196,6 +212,14 @@ export const ShoppingPage: React.FC = () => {
             {total > 0 && (
               <Typography variant="caption" color="text.secondary">
                 Started {humanDate(list.createdAt)}
+              </Typography>
+            )}
+            {estimatedTotal && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                ~€{estimatedTotal.sum.toFixed(2)}
+                {estimatedTotal.priced < estimatedTotal.total && (
+                  <> · {estimatedTotal.total - estimatedTotal.priced} item{estimatedTotal.total - estimatedTotal.priced !== 1 ? "s" : ""} unpriced</>
+                )}
               </Typography>
             )}
           </Box>
